@@ -1,5 +1,6 @@
 import rospy
 from std_msgs.msg import Float64
+from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse, GraspSrv
 
 class TaskPlanner:
     def __init__(self):
@@ -8,10 +9,25 @@ class TaskPlanner:
         rospy.loginfo("Recycle Node Ready")
 
         rospy.Subscriber('/recycle', Float64, self.main())
-        self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
+        # self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
+        # rospy.Subscriber
 
     def main(self):
-         self.classify_publisher.publish(4.0)
+        #  self.classify_publisher.publish(4.0)
+        rospy.wait_for_service('classify_waste')
+        try:
+             get_bounding_boxes = rospy.ServiceProxy('clasify_waste', ClassifySrv)
+             yoloV5_data = get_bounding_boxes()
+        except rospy.ServiceException as e:
+             print("Classify Service call failed: %s"%e)
+
+        rospy.wait_for_service('get_grasps')
+        try:
+             find_grasps = rospy.ServiceProxy('get_grasps', GraspSrv)
+             grasps = find_grasps(yoloV5_data)
+        except rospy.ServiceException as e:
+             print("Grasp Service call failed: %s"%e)
+
 
          # while objects are not 0:
              # recieve classified image with objects, object types, bounding boxes, coordinates
