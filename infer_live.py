@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # infer.py
 
 import sys
@@ -22,17 +23,15 @@ import numpy as np
 
 import rospy
 from std_msgs.msg import Float64MultiArray, Float64
-from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse
 
-class ClassifyServer:
+class InferLive:
     def __init__(self):
-        rospy.init_node("classify_server")
+        rospy.init_node("infer_live")
         rospy.sleep(1.0)
-        rospy.loginfo("Classify Server Ready")
+        rospy.loginfo("Infer Live Node Ready")
 
-        # rospy.Subscriber('/classify', Float64, self.main())
-        # self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
-        self.s = rospy.Service('classify_waste', ClassifySrv, self.main())
+        rospy.Subscriber('/classify', Float64, self.main())
+        self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
 
 
         # Set up logging
@@ -158,7 +157,7 @@ class ClassifyServer:
             i += 1
         yolo_v5_msg = Float64MultiArray()
         yolo_v5_msg.data = yolo_v5_array
-        # self.box_publisher.publish(yolo_v5_msg)
+        self.box_publisher.publish(yolo_v5_msg)
 
     #     # Display the frame
     #     cv2.imshow('Real-Time Waste Detector', frame)
@@ -170,7 +169,6 @@ class ClassifyServer:
         cap.release()
         cv2.destroyAllWindows()
         self.logger.info("Real-time detection ended.")
-        return ClassifySrvResponse(yolo_v5_msg)
 
     def run(self):
         rospy.spin()
@@ -178,4 +176,4 @@ class ClassifyServer:
 
 if __name__ == '__main__':
     
-    ClassifyServer().run()
+    InferLive().run()

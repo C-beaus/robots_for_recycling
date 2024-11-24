@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import cv2
 
 from hardware.camera import RealSenseCamera
 from hardware.device import get_device
@@ -15,7 +16,7 @@ from skimage.feature import peak_local_max
 
 
 class GraspGenerator:
-    def __init__(self, saved_model_path, visualize=False):
+    def __init__(self, saved_model_path):
 
         self.saved_model_path = saved_model_path
 
@@ -33,11 +34,6 @@ class GraspGenerator:
         self.grasp_available = os.path.join(homedir, "grasp_available.npy")
         self.grasp_pose = os.path.join(homedir, "grasp_pose.npy")
 
-        if visualize:
-            self.fig = plt.figure(figsize=(10, 10))
-        else:
-            self.fig = None
-
 
     def load_model(self):
         print('Loading model... ')
@@ -46,18 +42,27 @@ class GraspGenerator:
         self.device = get_device(force_cpu=True)
     
 
-    def detect_grasps_bboxes(self, bboxes, q_img, ang_img, width_img=None):
+    def detect_grasps_bboxes(self, bboxes, q_img, ang_img, width_img):
         
         grasps = []
         labels = []
 
         for bbox in bboxes:
-            label, x, y, w, h = bbox
-            roi = q_img[int(y):int(y+h), int(x):int(x+w)]
 
-            best_grasp = np.unravel_index(np.argmax(roi), roi.shape)
+            label, x_center, y_center, width, height = bbox
+            x_top_left = int(x_center - width / 2)
+            y_top_left = int(y_center - height / 2)
+            x_bottom_right = int(x_center + width / 2)
+            y_bottom_right = int(y_center + height / 2)
+            roi = q_img[y_top_left:y_bottom_right, x_top_left:x_bottom_right]
+            
+            best_grasp = list(np.unravel_index(np.argmax(roi), roi.shape))
+
+            best_grasp[0] = best_grasp[0] + y_top_left
+            best_grasp[1] = best_grasp[1] + x_top_left
+
+            best_grasp = tuple(best_grasp)
             best_grasp_angle = ang_img[best_grasp]
-
             g = Grasp(best_grasp, best_grasp_angle)
 
             if width_img is not None:
@@ -67,6 +72,7 @@ class GraspGenerator:
                 labels.append(label)
 
         return grasps, labels
+            
     
     def generate(self, depth, rgb, bboxes, camera2robot=None, ppx=321.1669921875, ppy=231.57203674316406, 
                  fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
@@ -82,8 +88,14 @@ class GraspGenerator:
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
         grasp_poses = []
-
+        rect_list = []
         for i in range(len(grasps)):
+            
+            center = grasps[i].center
+            angle  = grasps[i].angle
+            length = grasps[i].length
+            width = grasps[i].width
+            rect_list.append([center, angle, width, length])
 
             # Get grasp position from model output
             pos_z = depth[grasps[i].center[0], grasps[i].center[1]] - 0.04 # Adjust margin based on gripper geometry
@@ -108,7 +120,8 @@ class GraspGenerator:
             target_angle = np.dot(camera2robot[0:3, 0:3], angle)
 
             # Concatenate grasp pose with grasp angle
-            grasp_pose = np.append(target_position, target_angle[2], labels[i])
+            grasp_pose = np.append(target_position, target_angle[2])
+            grasp_pose = np.append(grasp_pose, labels[i])
             grasp_poses.append(grasp_pose)
-        
+            
         return grasp_poses
