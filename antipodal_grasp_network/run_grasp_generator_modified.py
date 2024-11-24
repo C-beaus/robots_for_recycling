@@ -27,7 +27,7 @@ def capture_frames():
 
     depth_sensor = profile.get_device().first_depth_sensor()
     depth_scale = depth_sensor.get_depth_scale()
-    
+    i = 0
     try:
         while True:
 
@@ -39,10 +39,12 @@ def capture_frames():
             # Keep looping until valid depth and color frames are received.
             if not color_frame and aligned_depth_frame:
                 continue
-
-            depth_image = np.asarray(aligned_depth_frame.get_data(), dtype=np.float32)
-            color_image = np.asanyarray(color_frame.get_data())
-            break
+            if i == 10:
+                depth_image = np.asarray(aligned_depth_frame.get_data(), dtype=np.float32)
+                color_image = np.asanyarray(color_frame.get_data())
+                break
+            i+=1
+            
     
     except RuntimeError as e:
         print(f"Error occurred: {e}")
@@ -79,7 +81,7 @@ def find_largest_contour(image):
     return largest_contour
 
 
-def generate_poses(generator=None, bboxes=None, color_image=None, depth_image=None, use_cam=True):
+def generate_poses(generator=None, bboxes=None, camera2robot=None, color_image=None, depth_image=None, use_cam=True):
 
     # color_image and depth_image obtained from either classification team or collected ourselves
     # Collect own images if classification team did not provide them
@@ -90,7 +92,7 @@ def generate_poses(generator=None, bboxes=None, color_image=None, depth_image=No
     
     # grasp poses is a list of arrays like [np.array([x,y,z,angle, label]), ....]
     # label of object included with grasp
-    grasp_poses = generator.generate(depth=depth_image, rgb=color_image, bboxes=bboxes, camera2robot=None, 
+    grasp_poses = generator.generate(depth=depth_image, rgb=color_image, bboxes=bboxes, camera2robot=camera2robot, 
                                              ppx=321.1669921875, ppy=231.57203674316406, fx=605.622314453125, 
                                              fy=605.8401489257812)
     
