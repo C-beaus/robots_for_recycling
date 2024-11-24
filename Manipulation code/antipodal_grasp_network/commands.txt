@@ -1,0 +1,3 @@
+source venv/bin/activate
+
+python run_offline.py --network /home/cooper530/rbe595/robotic-grasping/trained-models/cornell-randsplit-rgbd-grconvnet3-drop1-ch32/epoch_15_iou_0.97 --rgb_path dataset/01/pcd0100r.png --depth_path dataset/01/pcd0100d.tiff --save 1
