@@ -12,7 +12,7 @@ This repository contains two scripts, `train.py` and `infer.py`, for training an
 
 Install the dependencies with:
 ```bash
-pip install -r requirements.txt 
+pip install -r requirements_38.txt 
 ```
 
 ## Dataset Structure

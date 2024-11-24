@@ -51,7 +51,7 @@ class GraspGenerator:
         # Get the compute device
         self.device = get_device(force_cpu=False)
 
-    def generate(self):
+    def generate(self, grasps, rgb):
         # Get RGB-D image from camera
         image_bundle = self.camera.get_image_bundle()
         rgb = image_bundle['rgb']
@@ -112,5 +112,7 @@ class GraspGenerator:
     #             time.sleep(0.1)
 
     def run(self):
+        grasps = np.load('grasps.npy').tolist()
+        rgb = np.load('rgb.npy')
         while True:
             self.generate()
