@@ -33,6 +33,7 @@ class AntipodalPlanner:
         flattened_grasp_poses = grasp_poses.flatten()
         msg = Float64MultiArray()
         msg.data = flattened_grasp_poses
+        rospy.loginfo(f'Grasp poses: {msg.data}')
         # Publish the pose information
         self.pose_publisher.publish(msg)
 
