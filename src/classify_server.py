@@ -1,4 +1,4 @@
-# infer.py
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -22,7 +22,7 @@ import numpy as np
 
 import rospy
 from std_msgs.msg import Float64MultiArray, Float64
-from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse
+# from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse
 
 class ClassifyServer:
     def __init__(self):
@@ -30,9 +30,9 @@ class ClassifyServer:
         rospy.sleep(1.0)
         rospy.loginfo("Classify Server Ready")
 
-        # rospy.Subscriber('/classify', Float64, self.main())
-        # self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
-        self.s = rospy.Service('classify_waste', ClassifySrv, self.main())
+        rospy.Subscriber('/classify', Float64, self.main)
+        self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
+        # self.s = rospy.Service('classify_waste', ClassifySrv, self.main())
 
 
         # Set up logging
@@ -115,8 +115,8 @@ class ClassifyServer:
         # else:
         #     print("No camera found")
 
-        # cap = cv2.VideoCapture(2)
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(2)
+        # cap = cv2.VideoCapture(0)
         
         if not cap.isOpened():
             self.logger.error("Failed to open webcam.")
@@ -170,9 +170,11 @@ class ClassifyServer:
         cap.release()
         cv2.destroyAllWindows()
         self.logger.info("Real-time detection ended.")
-        return ClassifySrvResponse(yolo_v5_msg)
+        # return ClassifySrvResponse(yolo_v5_msg)
+        self.box_publisher.publish(yolo_v5_msg)
 
     def run(self):
+        rospy.loginfo("In Run Method")
         rospy.spin()
 
 

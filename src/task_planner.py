@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
+
 import rospy
 from std_msgs.msg import Float64
-from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse, GraspSrv
+from robots_for_recycling.srv import ClassifySrv, GraspSrv
 
 class TaskPlanner:
     def __init__(self):
@@ -8,9 +10,9 @@ class TaskPlanner:
         rospy.sleep(1.0)
         rospy.loginfo("Recycle Node Ready")
 
-        rospy.Subscriber('/recycle', Float64, self.main())
-        # self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
-        # rospy.Subscriber
+        self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
+        rospy.Subscriber('/recycle', Float64, self.main)
+        
 
     def main(self):
         #  self.classify_publisher.publish(4.0)
@@ -40,7 +42,8 @@ class TaskPlanner:
 
 
     def run(self):
-            rospy.spin()
+        rospy.loginfo("In Run")
+        rospy.spin()
 
 if __name__ == '__main__':
     
