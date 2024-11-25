@@ -85,17 +85,12 @@ class GraspGenerator:
             pred = self.model.predict(xc)
 
         q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
+        q_img = np.where(np.squeeze(depth, axis=2)==0, 0, q_img)
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
         grasp_poses = []
-        rect_list = []
+
         for i in range(len(grasps)):
-            
-            center = grasps[i].center
-            angle  = grasps[i].angle
-            length = grasps[i].length
-            width = grasps[i].width
-            rect_list.append([center, angle, width, length])
 
             # Get grasp position from model output
             pos_z = depth[grasps[i].center[0], grasps[i].center[1]] - 0.04 # Adjust margin based on gripper geometry
