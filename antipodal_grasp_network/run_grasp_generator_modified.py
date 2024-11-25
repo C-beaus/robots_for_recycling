@@ -61,10 +61,8 @@ def process_frames(color_image, depth_image, depth_scale):
     _, binary_mask = cv2.threshold(grey_img, 150, 250, cv2.THRESH_BINARY)
     largest_contour = find_largest_contour(binary_mask)
     color_mask = np.zeros_like(color_image)
-    depth_mask = np.zeros_like(depth_image)
     cv2.drawContours(color_mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
     color_image = cv2.bitwise_and(color_image, color_mask)
-    depth_image = cv2.bitwise_and(depth_image, depth_mask)
     depth_image = np.expand_dims(depth_image, axis=2)
 
     return color_image, depth_image
