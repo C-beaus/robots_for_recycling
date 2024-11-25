@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# infer.py
+
 import sys
 import os
 import logging
@@ -10,7 +10,6 @@ from torchvision import transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import pyrealsense2 as rs
 
 from train import WasteDataset
 from torch.utils.data import DataLoader, Dataset
@@ -30,6 +29,10 @@ class ClassifyServer:
         rospy.init_node("classify_server")
         rospy.sleep(1.0)
         rospy.loginfo("Classify Server Ready")
+
+        rospy.Subscriber('/classify', Float64, self.main)
+        self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
+        self.s = rospy.Service('classify_waste', ClassifySrv, self.main)
 
 
         # Set up logging
@@ -59,49 +62,8 @@ class ClassifyServer:
 
         self.NUM_CLASSES = len(self.CLASSES)
 
-        self.model_name = '/home/sultan/catkin_ws/src/my_sample_package/scripts/models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth'
+        self.model_name = 'models/mobilenet_ss_18_wd_0001/fasterrcnn_mobilenet_ss_18_wd_0001.pth'
         self.confidence_threshold = 0.7
-
-        # self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
-        # rospy.Subscriber('/classify', Float64, self.main)
-        self.s = rospy.Service('classify_waste', ClassifySrv, self.main)
-    
-    def capture_frames(self):
-        
-        # Create a pipeline
-        pipeline = rs.pipeline()
-
-        # Create a config and enable the bag file
-        config = rs.config()
-
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.rgb8, 30)
-
-        pipeline.start(config)
-
-        # Create an align object to align color frames to depth frames
-        align_to = rs.stream.color
-        align = rs.align(align_to)
-        
-        try:
-            while True:
-
-                frames = pipeline.wait_for_frames()
-                aligned_frames = align.process(frames)
-                color_frame = aligned_frames.first(rs.stream.color)
-
-                # Keep looping until valid depth and color frames are received.
-                if not color_frame:
-                    continue
-
-                color_image = np.asanyarray(color_frame.get_data())
-                break
-        
-        except RuntimeError as e:
-            print(f"Error occurred: {e}")
-        finally:
-            pipeline.stop()
-            return color_image
 
     def get_model_instance_segmentation(self, num_classes):
         model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=False)
@@ -134,7 +96,7 @@ class ClassifyServer:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         return frame
 
-    def main(self, msg):
+    def main(self):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = self.get_model_instance_segmentation(self.NUM_CLASSES)
         # model.load_state_dict(torch.load('fasterrcnn_model.pth', map_location=device))
@@ -142,7 +104,7 @@ class ClassifyServer:
 
         model.eval().to(device)
 
-        # # Open a connection to the webcam
+        # Open a connection to the webcam
         # cv2.VideoCapture()
         # for i in range(5):  # Testing indices from 0 to 4
         #     cap = cv2.VideoCapture(i)
@@ -153,26 +115,24 @@ class ClassifyServer:
         # else:
         #     print("No camera found")
 
-        # # cap = cv2.VideoCapture(1)
-        # cap = cv2.VideoCapture(4)
+        cap = cv2.VideoCapture(2)
+        # cap = cv2.VideoCapture(0)
         
-        # if not cap.isOpened():
-        #     self.logger.error("Failed to open webcam.")
-        #     sys.exit(1)
+        if not cap.isOpened():
+            self.logger.error("Failed to open webcam.")
+            sys.exit(1)
 
-        # self.logger.info("Starting real-time object detection. Press 'q' to quit.")
+        self.logger.info("Starting real-time object detection. Press 'q' to quit.")
 
-        # # while True:
-        # ret, frame = cap.read()
-        # if not ret:
-        #     self.logger.error("Failed to grab frame.")
-        #     sys.exit(1)
+        # while True:
+        ret, frame = cap.read()
+        if not ret:
+            self.logger.error("Failed to grab frame.")
+            sys.exit(1)
             # break
 
-        rgb_frame = self.capture_frames()
-
         # Convert frame to RGB and PIL Image
-        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(rgb_frame)
 
         # Run inference
@@ -184,38 +144,38 @@ class ClassifyServer:
         scores = outputs['scores'].cpu().numpy()
 
         # Draw the bounding boxes and labels on the frame
-        # frame = self.draw_bounding_boxes(frame, boxes, labels, scores, threshold=self.confidence_threshold)
+        frame = self.draw_bounding_boxes(frame, boxes, labels, scores, threshold=self.confidence_threshold)
 
         yolo_v5_array = []
         i = 0
         for box, label, score in zip(boxes, labels, scores):
+            # No need for yolo format, would work better for them if they had xmin, ymin, xmax, ymax; but working now
             xmin, ymin, xmax, ymax = map(int, box)
             width = xmax - xmin
             height = ymax - ymin
             center_x = (xmax + xmin) / 2
             center_y = (ymax + ymin) / 2
-            yolo_v5_array.append([label, center_x, center_y, width, height])
+            yolo_v5_array[i, :] = [label, center_x, center_y, width, height]
             i += 1
-        yolo_v5_array = np.array(yolo_v5_array, dtype=np.float64).flatten()
         yolo_v5_msg = Float64MultiArray()
         yolo_v5_msg.data = yolo_v5_array
-        rospy.loginfo(f'Sending bounding boxes {yolo_v5_msg.data}')
         # self.box_publisher.publish(yolo_v5_msg)
 
-        # Display the frame
-        # cv2.imshow('Real-Time Waste Detector', frame)
+    #     # Display the frame
+    #     cv2.imshow('Real-Time Waste Detector', frame)
 
-        # Press 'q' to exit
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     rospy.sleep(10)
+    #     # Press 'q' to exit
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
 
-        # cap.release()
-        # cv2.destroyAllWindows()
+        cap.release()
+        cv2.destroyAllWindows()
         self.logger.info("Real-time detection ended.")
-        return ClassifySrvResponse(yolo_v5_msg)
-        # self.box_publisher.publish(yolo_v5_msg)
+        # return ClassifySrvResponse(yolo_v5_msg)
+        self.box_publisher.publish(yolo_v5_msg)
 
     def run(self):
+        rospy.loginfo("In Run Method")
         rospy.spin()
 
 

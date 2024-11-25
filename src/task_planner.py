@@ -2,7 +2,7 @@
 
 import rospy
 from std_msgs.msg import Float64
-from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse, GraspSrv
+from robots_for_recycling.srv import ClassifySrv, GraspSrv
 
 class TaskPlanner:
     def __init__(self):
@@ -12,10 +12,10 @@ class TaskPlanner:
 
         self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
         rospy.Subscriber('/recycle', Float64, self.main)
-        # rospy.Subscriber
+        
 
-    def main(self, msg):
-        #  self.classify_publisher.publish(msg)
+    def main(self):
+        #  self.classify_publisher.publish(4.0)
         rospy.wait_for_service('classify_waste')
         try:
              get_bounding_boxes = rospy.ServiceProxy('clasify_waste', ClassifySrv)
@@ -42,7 +42,8 @@ class TaskPlanner:
 
 
     def run(self):
-            rospy.spin()
+        rospy.loginfo("In Run")
+        rospy.spin()
 
 if __name__ == '__main__':
     
