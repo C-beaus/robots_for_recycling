@@ -100,14 +100,14 @@ class EndEffector:
     #def customDisplacement(self)
     #    return not self.picked_bool
     
-    def customGripperDisplacement(self, value):
+    def customGripperDisplacement(self, pose):
         #msg = Float32()
         #msg.data = -value
         #self.gripper_publisher.publish(msg)
         #print("Gripper position set to", value)
-
+        #pass # I may be using this comand incorrectly and should probably delete this method
         raise NotImplementedError("This method should be overridden by subclasses")
-    
+
     #AB
     #def pickup(self, pose):
     #    rospy.loginfo(f"Franka gripper moving to pose: {pose}")
