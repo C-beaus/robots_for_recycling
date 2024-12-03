@@ -51,6 +51,7 @@ class EndEffector:
     def __init__(self, offset):
         self.offset = offset#66.7#offset#needs to be set
         self.picked_bool = False
+        #CHECK THIS WITH
 
     ##AB
     #def _pre_grasp_check(self):
@@ -82,7 +83,7 @@ class EndEffector:
     def isPicked(self):  # Closes the gripper either to max encoder value or until the max load is hit
         #msg = Bool()
         #msg.data = self.picked_val
-        return self.picked_bool
+        #return self.picked_bool
         #if msg.data == True:
         #    return False
         #else:
@@ -91,11 +92,11 @@ class EndEffector:
 
         #self.gripper_command_publisher.publish(msg)
         #print("gripper closed")
-        #raise NotImplementedError("This method should be overridden by subclasses")
+        raise NotImplementedError("This method should be overridden by subclasses")
 
     def isReleased(self):
-        return not self.picked_bool
-        #raise NotImplementedError("This method should be overridden by subclasses")
+        #return not self.picked_bool
+        raise NotImplementedError("This method should be overridden by subclasses")
     
     #def customDisplacement(self)
     #    return not self.picked_bool
@@ -195,3 +196,37 @@ class EndEffector:
 #        self.move_group.set_pose_target(pose)
 #        self.move_group.go(wait=True)
 #        self.grasp()
+
+#def callback(a, b):
+#    print('Sum = {0}'.format(a+b))
+#
+#def main(callback=None):
+#    print('Add any two digits.')
+#    if callback is not None:
+#        callback()
+#
+#tmp_func = lambda: main(lambda: callback(2,3))
+#tmp_func()
+#
+##OR
+#
+#tmp_func = lambda x,y: main(lambda: callback(x,y))
+#tmp_func(2,4)
+#
+def callback(callback_test_input):
+#    #print('Sum = {0}'.format(a+b))
+    #print('Is gripper open?: '.format(picked_bool))
+    print('callback_test_input: '.format(callback_test_input))
+#
+def main(callback=None):
+    print('calback testing')
+    if callback is not None:
+        callback()
+#
+#tmp_func = lambda: main(lambda: callback(2,3))
+#tmp_func()
+#
+#OR
+#
+#tmp_func = lambda x,y: main(lambda: callback(x,y))
+#tmp_func(2,4)
