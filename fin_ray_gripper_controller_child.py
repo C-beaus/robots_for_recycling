@@ -1,29 +1,4 @@
-#parent example
-#end_effector_controller is a parent class to types of grippers.
-
-class Person:
-    def __init__(self, fname, lname):
-        self.firstname = fname
-        self.lastname = lname
-
-    def printname(self):
-        print(self.firstname, self.lastname)
-
-#Use the Person class to create an object, and then execute the printname method:
-
-x = Person("John", "Doe")
-x.printname() 
-end of parent example
-
-#Child example
-class Student(Person):
-    def __init__(self, fname, lname, year):
-        super().__init__(fname, lname)
-        self.graduationyear = year
-
-    def welcome(self):
-        print("Welcome", self.firstname, self.lastname, "to the class of", self.graduationyear) 
-#end of child example
+#Parent child class examples from: https://www.w3schools.com/python/python_inheritance.asp
 
 #Start if content from control_example.py
 #!/usr/bin/env python3
@@ -48,14 +23,9 @@ from std_msgs.msg import Float64, String, Int32, Bool, Float32
 from end_effector.msg import GripperToggle, GripperState
 
 class FinRayGripperControllerChild(EndEffector):
-    def __init__(self, offset):
-        self.offset = offset#66.7#offset#needs to be set
-        self.picked_bool = False
-
-    ##AB
-    #def _pre_grasp_check(self):
-    #    rospy.loginfo("Franka gripper pre-grasp check: Validating MoveIt pose...")
-    #    # Check if the pose is within the robot's limits or reachable
+    def __init__(self, offset, startPos):
+        super().__init__(offset)
+        self.startPos = startPos
 
     def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit. 
         #I should probably make an alalog version of this.
@@ -66,13 +36,6 @@ class FinRayGripperControllerChild(EndEffector):
         print("gripper closed")
         self.picked_bool = True
         
-
-    #AB
-    def _grasp_action(self):
-        rospy.loginfo("Franka gripper closing...")
-        # Command Franka's gripper to close
-        self.move_group.attach_object()
-
     def release(self):
         #report offset
         msg = Bool()
@@ -82,122 +45,65 @@ class FinRayGripperControllerChild(EndEffector):
         print("gripper opened")   
         self.picked_bool = False 
     
-    #AB
-    def _release_action(self):
-            rospy.loginfo("Franka gripper opening...")
-            # Command Franka's gripper to open
-            self.move_group.detach_object()
 
-
-    def isPicked(self):  # Closes the gripper either to max encoder value or until the max load is hit
+    def pickedStatusReportFormal(selfPlaceholder):
+        return f"The {selfPlaceholder} has not grasped nor picked at the presant"    
+    
+    #def isPicked(self,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
+    def isPicked(selfPlaceholder,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
         #msg = Bool()
         #msg.data = self.picked_val
-        return self.picked_bool
+        picked_status_report = callback_function_is_picked(selfPlaceholder)
+        #isPickedBoolStatus = callback_function_is_picked
+        #return self.picked_bool
+        
+        print(picked_status_report)
         #if msg.data == True:
         #    return False
         #else:
         #    return True
     
-
-        self.gripper_command_publisher.publish(msg)
-        print("gripper closed")
-
+    #isPicked(selfPlaceholder="Three finger radialy symmetric torsion resistant Fin Ray gripper",callback_function_is_picked=pickedStatusReportFormal)
+    ###needs to be moved^^^^
+    
+    #def isPicked(self):  # Closes the gripper either to max encoder value or until the max load is hit
+    #    #msg = Bool()
+    #    #msg.data = self.picked_val
+    #    return self.picked_bool
+    #    #if msg.data == True:
+    #    #    return False
+    #    #else:
+    #    #    return True
     def isReleased(self):
         return not self.picked_bool
-    
-    #def customDisplacement(self)
-    #    return not self.picked_bool
-    
-    def customDisplacement(self, value):
+        
+    def customDisplacement(self, pose):
         msg = Float32()
-        msg.data = -value
+        msg.data = -pose
         self.gripper_publisher.publish(msg)
-        print("Gripper position set to", value)
+        print("Gripper position set to", pose) 
+        #rospy.loginfo(f"Gripper position set to: {pose}")
 
-    #AB
-    def pickup(self, pose):
         rospy.loginfo(f"Franka gripper moving to pose: {pose}")
-        self.move_group.set_pose_target(pose)
-        self.move_group.go(wait=True)
-        self.grasp()
+        #self.move_group.set_pose_target(pose)
+        #self.move_group.go(wait=True)
+        #self.pick()
+        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
+
+    def customDisplacementTime(self,time):
+        msg = Float32()
+        msg.data = -time
+        self.gripper_publisher.publish(msg)
+        print("Gripper position set to", time) 
+        #rospy.loginfo(f"Gripper position set to: {pose}")
+
+        rospy.loginfo(f"Franka gripper moving to pose: {time}")
+        #self.move_group.set_pose_target(pose)
+        #self.move_group.go(wait=True)
+        #self.pick()
+        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
+    #add demo function !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #main
+
+    isPicked(selfPlaceholder="Three finger radialy symmetric torsion resistant Fin Ray gripper",callback_function_is_picked=pickedStatusReportFormal)
     
-    #def setZposition(self, value):
-    #    msg = Float32()
-    #    msg.data = -value
-    #    self.gantry_z_publisher.publish(msg)
-    #    print("z position set to", value)
-
-#def main():
-#    isReleased()
-#    customDisplacement
-
-#if __name__ == '__main__':
-#    main()
-
-
-#Alex Brattstrom EndEffectorBase
-  
-
-class EndEffectorBase:
-    def __init__(self):
-        pass
-
-    def pickup(self, pose):
-        """Public method to move to a pose and pick up an object."""
-        raise NotImplementedError("This method should be overridden by subclasses")
-
-    def grasp(self):
-        """Public method to grasp an object."""
-        self._pre_grasp_check()
-        self._grasp_action()
-
-    def release(self):
-        """Public method to release an object."""
-        self._release_action()
-
-    def _pre_grasp_check(self):
-        """Protected method for internal checks before grasping."""
-        raise NotImplementedError("This method should be overridden by subclasses")
-
-    def _grasp_action(self):
-        """Protected method for performing the actual grasp action."""
-        raise NotImplementedError("This method should be overridden by subclasses")
-
-    def _release_action(self):
-        """Protected method for performing the release action."""
-        raise NotImplementedError("This method should be overridden by subclasses")
-
-
-
-
-
-
-
-#Alex Brattstrom FrankaGripper code
-
-from end_effector_base import EndEffectorBase
-
-class FrankaGripper(EndEffectorBase):
-    def __init__(self, move_group):
-        super().__init__()
-        self.move_group = move_group
-
-    def _pre_grasp_check(self):
-        rospy.loginfo("Franka gripper pre-grasp check: Validating MoveIt pose...")
-        # Check if the pose is within the robot's limits or reachable
-
-    def _grasp_action(self):
-        rospy.loginfo("Franka gripper closing...")
-        # Command Franka's gripper to close
-        self.move_group.attach_object()
-
-    def _release_action(self):
-        rospy.loginfo("Franka gripper opening...")
-        # Command Franka's gripper to open
-        self.move_group.detach_object()
-
-    def pickup(self, pose):
-        rospy.loginfo(f"Franka gripper moving to pose: {pose}")
-        self.move_group.set_pose_target(pose)
-        self.move_group.go(wait=True)
-        self.grasp()
