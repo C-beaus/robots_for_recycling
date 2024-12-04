@@ -57,6 +57,12 @@ class TaskPlanner:
         #     thisListPosition += 1
 
         ## Send grasps to mainipulator
+        # grasp is formatted as: x y z angle class_label
+        # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
+        # Also add argument to pass in for type of end effector gripper?
+        # Task planner node should also handle talking to conveyor belt to move 
+
+
         # self.manipulator.pickMove(bestGrasp)
 
          # while objects are not 0:
@@ -90,4 +96,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    TaskPlanner().run(args.manipulator_type)
+    TaskPlanner(args.manipulator_type).run()
