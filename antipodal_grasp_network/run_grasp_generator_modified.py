@@ -39,7 +39,8 @@ def capture_frames():
             # Keep looping until valid depth and color frames are received.
             if not color_frame and aligned_depth_frame:
                 continue
-            if i == 10:
+            if i == 10: # Skipping first few frames because they aren't good. Remove this condition when
+                        # the belt is moving or when frames come from task planner or a separate camera node. 
                 depth_image = np.asarray(aligned_depth_frame.get_data(), dtype=np.float32)
                 color_image = np.asanyarray(color_frame.get_data())
                 break
@@ -61,10 +62,8 @@ def process_frames(color_image, depth_image, depth_scale):
     _, binary_mask = cv2.threshold(grey_img, 150, 250, cv2.THRESH_BINARY)
     largest_contour = find_largest_contour(binary_mask)
     color_mask = np.zeros_like(color_image)
-    depth_mask = np.zeros_like(depth_image)
     cv2.drawContours(color_mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
     color_image = cv2.bitwise_and(color_image, color_mask)
-    depth_image = cv2.bitwise_and(depth_image, depth_mask)
     depth_image = np.expand_dims(depth_image, axis=2)
 
     return color_image, depth_image
@@ -90,7 +89,7 @@ def generate_poses(generator=None, bboxes=None, camera2robot=None, color_image=N
     
     color_image, depth_image =  process_frames(color_image, depth_image, depth_scale)
     
-    # grasp poses is a list of arrays like [np.array([x,y,z,angle, label]), ....]
+    # grasp poses is a list of arrays like [np.array([x,y,z,angle,width,label]), ....]
     # label of object included with grasp
     grasp_poses = generator.generate(depth=depth_image, rgb=color_image, bboxes=bboxes, camera2robot=camera2robot, 
                                              ppx=321.1669921875, ppy=231.57203674316406, fx=605.622314453125, 
