@@ -1,5 +1,5 @@
-import rclpy
-from rclpy.node import Node
+import rospy
+from rospy.node import Node
 import smach
 import smach_ros
 from std_msgs.msg import String
