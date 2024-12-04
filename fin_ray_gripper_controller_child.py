@@ -26,6 +26,7 @@ class FinRayGripperControllerChild(EndEffector):
     def __init__(self, offset, startPos):
         super().__init__(offset)
         self.startPos = startPos
+        self.picked_bool = False
 
     def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit. 
         #I should probably make an alalog version of this.
@@ -46,30 +47,30 @@ class FinRayGripperControllerChild(EndEffector):
         self.picked_bool = False 
     
 
-    def pickedStatusReportFormal(selfPlaceholder):
-        return f"The {selfPlaceholder} has not grasped nor picked at the presant"    
-    
-    #def isPicked(self,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
-    def isPicked(selfPlaceholder,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
-        #msg = Bool()
-        #msg.data = self.picked_val
-        picked_status_report = callback_function_is_picked(selfPlaceholder)
-        #isPickedBoolStatus = callback_function_is_picked
-        #return self.picked_bool
-        
-        print(picked_status_report)
-        #if msg.data == True:
-        #    return False
-        #else:
-        #    return True
+   # def pickedStatusReportFormal(selfPlaceholder):
+   #     return f"The {selfPlaceholder} has not grasped nor picked at the presant"    
+   # 
+   # #def isPicked(self,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
+   # def isPickedOld(selfPlaceholder,callback_function_is_picked):  # Closes the gripper either to max encoder value or until the max load is hit
+   #     #msg = Bool()
+   #     #msg.data = self.picked_val
+   #     picked_status_report = callback_function_is_picked(selfPlaceholder)
+   #     #isPickedBoolStatus = callback_function_is_picked
+   #     #return self.picked_bool
+   #     
+   #     print(picked_status_report)
+   #     #if msg.data == True:
+   #     #    return False
+   #     #else:
+   #     #    return True
     
     #isPicked(selfPlaceholder="Three finger radialy symmetric torsion resistant Fin Ray gripper",callback_function_is_picked=pickedStatusReportFormal)
     ###needs to be moved^^^^
     
-    #def isPicked(self):  # Closes the gripper either to max encoder value or until the max load is hit
+    def isPicked(self):  # Closes the gripper either to max encoder value or until the max load is hit
     #    #msg = Bool()
     #    #msg.data = self.picked_val
-    #    return self.picked_bool
+        return self.picked_bool
     #    #if msg.data == True:
     #    #    return False
     #    #else:
@@ -77,33 +78,45 @@ class FinRayGripperControllerChild(EndEffector):
     def isReleased(self):
         return not self.picked_bool
         
-    def customDisplacement(self, pose):
+    def customActuation(self, customActuationValue):
         msg = Float32()
-        msg.data = -pose
+        msg.data = -customActuationValue
         self.gripper_publisher.publish(msg)
-        print("Gripper position set to", pose) 
+        print("Gripper position set to", customActuationValue) 
         #rospy.loginfo(f"Gripper position set to: {pose}")
 
-        rospy.loginfo(f"Franka gripper moving to pose: {pose}")
+        rospy.loginfo(f"Franka gripper moving to pose: {customActuationValue}")
         #self.move_group.set_pose_target(pose)
         #self.move_group.go(wait=True)
         #self.pick()
         self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
 
-    def customDisplacementTime(self,time):
-        msg = Float32()
-        msg.data = -time
-        self.gripper_publisher.publish(msg)
-        print("Gripper position set to", time) 
-        #rospy.loginfo(f"Gripper position set to: {pose}")
-
-        rospy.loginfo(f"Franka gripper moving to pose: {time}")
-        #self.move_group.set_pose_target(pose)
-        #self.move_group.go(wait=True)
-        #self.pick()
-        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
-    #add demo function !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    #main
-
-    isPicked(selfPlaceholder="Three finger radialy symmetric torsion resistant Fin Ray gripper",callback_function_is_picked=pickedStatusReportFormal)
-    
+#    def customDisplacementTime(self,time):
+#        msg = Float32()
+#        msg.data = -time
+#        self.gripper_publisher.publish(msg)
+#        print("Gripper position set to", time) 
+#        #rospy.loginfo(f"Gripper position set to: {pose}")
+#
+#        rospy.loginfo(f"Franka gripper moving to pose: {time}")
+#        #self.move_group.set_pose_target(pose)
+#        #self.move_group.go(wait=True)
+#        #self.pick()
+#        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
+#    #add demo function !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#    #main
+#
+#    #isPicked(selfPlaceholder="Three Fin Ray finger gripper",callback_function_is_picked=pickedStatusReportFormal)
+#    #isPicked(selfPlaceholder="Three finger radialy symmetric torsion resistant Fin Ray gripper",callback_function_is_picked=pickedStatusReportFormal)
+#    def customDisplacement(self, pose):
+#        msg = Float32()
+#        msg.data = -pose
+#        self.gripper_publisher.publish(msg)
+#        print("Gripper position set to", pose) 
+#        #rospy.loginfo(f"Gripper position set to: {pose}")
+#
+#        rospy.loginfo(f"Franka gripper moving to pose: {pose}")
+#        #self.move_group.set_pose_target(pose)
+#        #self.move_group.go(wait=True)
+#        #self.pick()
+#        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case

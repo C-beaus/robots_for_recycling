@@ -101,7 +101,7 @@ class EndEffector:
     #def customDisplacement(self)
     #    return not self.picked_bool
     
-    def customGripperDisplacement(self, pose):
+    def customActuation(self, customActuationValue):
         #msg = Float32()
         #msg.data = -value
         #self.gripper_publisher.publish(msg)
