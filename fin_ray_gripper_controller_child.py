@@ -1,6 +1,3 @@
-#Parent child class examples from: https://www.w3schools.com/python/python_inheritance.asp
-
-#Start if content from control_example.py
 #!/usr/bin/env python3
 
 # To run: 
@@ -19,26 +16,27 @@ from dynamixel_sdk import *
 from dynamixel_sdk_examples.srv import * 
 from dynamixel_sdk_examples.msg import *
 from tool_dynamixel import DynamixelMotor
-from std_msgs.msg import Float64, String, Int32, Bool, Float32  
-from end_effector.msg import GripperToggle, GripperState
+from std_msgs.msg import Float64, String, Int32, Bool, Float32
+# from end_effector.msg import GripperToggle, GripperState
+from end_effector_parent import EndEffector
 
 class FinRayGripperControllerChild(EndEffector):
-    def __init__(self, offset):#, startPos):
-        super().__init__(offset)#May noteed this as its from the person student example
+    def __init__(self):#, offset):#, startPos):
+        super().__init__() #offset)#May noteed this as its from the person student example
         
 
         #from control_example.py
-        self.fin_ray_gripper_command_publisher = rospy.Publisher('/gripper_toggle', Bool, queue_size=5)
+        self.fin_ray_gripper_command_publisher = rospy.Publisher('/fin_ray_gripper_command_publisher', Bool, queue_size=5)
         #self.gantry_x_publisher = rospy.Publisher('/SetGantryXPos', Float32, queue_size=5)
         #self.gantry_z_publisher = rospy.Publisher('/SetGantryZPos', Float32,queue_size=5)
         #self.pubPneumatic = rospy.Publisher('/pneumatic_actuator', Bool, queue_size=5)
         #self.pubHome = rospy.Publisher("gantry/Home", Bool, queue_size=1)
         #self.pubX = rospy.Publisher("gantry/X", Float32, queue_size=1)
         #self.pubZ = rospy.Publisher("gantry/Z", Float32, queue_size=1)
-        # rospy.Subscriber("/gantryPosZ", String, self.posz_callback) 
+        # rospy.Subscriber("/gantryPosZ", String, self.posz_callback)
         # rospy.Subscriber("/gantryPosX", String, self.posx_callback)
 
-    def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit. 
+    def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit.
         #I should probably make an alalog version of this.
         msg = Bool()
         msg.data = False
@@ -131,3 +129,14 @@ class FinRayGripperControllerChild(EndEffector):
 #        #self.move_group.go(wait=True)
 #        #self.pick()
 #        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
+
+def main():
+    # exp_node()
+    # test_depth() # dont go past 8
+    rospy.init_node('fin_ray_gripper_controller_child')#keep
+    rospy.sleep(10)
+    example = FinRayGripperControllerChild()#create this object in a task planner or somewhere that you rcontrolling this
+    example.pick()
+
+if __name__ == '__main__':
+    main()

@@ -45,11 +45,11 @@ from dynamixel_sdk_examples.srv import *
 from dynamixel_sdk_examples.msg import *
 from tool_dynamixel import DynamixelMotor
 from std_msgs.msg import Float64, String, Int32, Bool, Float32  
-from end_effector.msg import GripperToggle, GripperState
+# from end_effector.msg import GripperToggle, GripperState
 
 class EndEffector:
-    def __init__(self, offset):
-        self.offset = offset#66.7#offset#needs to be set
+    def __init__(self):#, offset):
+        #self.offset = offset#66.7#offset#needs to be set
         self.picked_bool = False
         
         #CHECK THIS WITH
