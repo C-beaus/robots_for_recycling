@@ -21,7 +21,7 @@ ros::NodeHandle nh;
 Servo actuator; // create a servo object named "actuator"
 
 #define PIN 9
-bool msg_data = true;// one of these needs to go question
+bool msg_data = false;// one of these needs to go question
 
 void pinControlCallback(const std_msgs::Bool &msg){
     digitalWrite(PIN, msg.data ? HIGH : LOW);
@@ -33,7 +33,7 @@ void pinControlCallback(const std_msgs::Bool &msg){
 ros::Subscriber<std_msgs::Bool> pin_control_sub("fin_ray_gripper_command_publisher", &pinControlCallback);
 
 void setup() {
-  bool msg_data = true;// one of these needs to go question
+  //bool msg_data = false;// one of these needs to go question
   pinMode(PIN, OUTPUT);
   nh.initNode();
   nh.subscribe(pin_control_sub);
@@ -50,7 +50,7 @@ void loop() {
   // Extend and retract the actuator arm on a 5 second interval
   //bool msg_data=msg.data
   //print(msg_data)
-  if(msg_data){question
+  if(msg_data){//question
     actuator.writeMicroseconds(1000); // 1ms pulse to extend the arm
     delay(10); // the actuator takes >2s to extend/retract when loaded - give it plenty of time
   }
