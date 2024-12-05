@@ -51,6 +51,7 @@ class EndEffector:
     def __init__(self, offset):
         self.offset = offset#66.7#offset#needs to be set
         self.picked_bool = False
+        
         #CHECK THIS WITH
 
     ##AB

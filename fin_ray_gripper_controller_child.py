@@ -23,17 +23,27 @@ from std_msgs.msg import Float64, String, Int32, Bool, Float32
 from end_effector.msg import GripperToggle, GripperState
 
 class FinRayGripperControllerChild(EndEffector):
-    def __init__(self, offset, startPos):
-        super().__init__(offset)
-        self.startPos = startPos
-        self.picked_bool = False
+    def __init__(self, offset):#, startPos):
+        super().__init__(offset)#May noteed this as its from the person student example
+        
+
+        #from control_example.py
+        self.fin_ray_gripper_command_publisher = rospy.Publisher('/gripper_toggle', Bool, queue_size=5)
+        #self.gantry_x_publisher = rospy.Publisher('/SetGantryXPos', Float32, queue_size=5)
+        #self.gantry_z_publisher = rospy.Publisher('/SetGantryZPos', Float32,queue_size=5)
+        #self.pubPneumatic = rospy.Publisher('/pneumatic_actuator', Bool, queue_size=5)
+        #self.pubHome = rospy.Publisher("gantry/Home", Bool, queue_size=1)
+        #self.pubX = rospy.Publisher("gantry/X", Float32, queue_size=1)
+        #self.pubZ = rospy.Publisher("gantry/Z", Float32, queue_size=1)
+        # rospy.Subscriber("/gantryPosZ", String, self.posz_callback) 
+        # rospy.Subscriber("/gantryPosX", String, self.posx_callback)
 
     def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit. 
         #I should probably make an alalog version of this.
         msg = Bool()
         msg.data = False
 
-        self.gripper_command_publisher.publish(msg)
+        self.fin_ray_gripper_command_publisher.publish(msg)
         print("gripper closed")
         self.picked_bool = True
         
@@ -42,7 +52,7 @@ class FinRayGripperControllerChild(EndEffector):
         msg = Bool()
         msg.data = True
 
-        self.gripper_command_publisher.publish(msg)
+        self.fin_ray_gripper_command_publisher.publish(msg)
         print("gripper opened")   
         self.picked_bool = False 
     
@@ -80,6 +90,7 @@ class FinRayGripperControllerChild(EndEffector):
         
     def customActuation(self, customActuationValue):
         msg = Float32()
+        #msg.data = -customActuationValue
         msg.data = -customActuationValue
         self.gripper_publisher.publish(msg)
         print("Gripper position set to", customActuationValue) 
