@@ -27,7 +27,7 @@ class SuctionPlanner:
         msg = Float64MultiArray()
         msg.data = flattened_suction_poses
 
-        rospy.loginfo(f'Suction poses: {msg.data.reshape(-1, 5)}') # x, y, z?
+        rospy.loginfo(f'Suction poses: {msg.data.reshape(-1, 3)}') # x, y, z
 
         # Publish the pose information
         self.pose_publisher.publish(msg)
