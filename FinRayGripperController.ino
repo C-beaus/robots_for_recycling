@@ -13,22 +13,27 @@
 
 #include <Servo.h>
 #include <ros.h>
-#include <stf_msgs/Bool.h>
+#include <std_msgs/Bool.h>
 
 ros::NodeHandle nh;
 
 
 Servo actuator; // create a servo object named "actuator"
 
-#define PIN 9
+#define PIN 7
+bool msg_data = true;
 
 void pinControlCallback(const std_msgs::Bool &msg){
     digitalWrite(PIN, msg.data ? HIGH : LOW);
+    msg_data = msg.data;
+    print("recieved ",msg_data)
+
 }
 
-ros::Subscriber<std_msgs::Bool> pin_control_sub("fin_ray_gripper_publisher", &pinControlCallback);
+ros::Subscriber<std_msgs::Bool> pin_control_sub("fin_ray_gripper_command_publisher", &pinControlCallback);
 
 void setup() {
+  bool msg_data = false;
   pinMode(PIN, OUTPUT);
   nh.initNode();
   nh.subscribe(pin_control_sub);
@@ -43,15 +48,15 @@ void loop() {
   delay(10);//momentary pause
   //old
   // Extend and retract the actuator arm on a 5 second interval
-  msg_data=msg.data
-  print(msg_data)
+  //bool msg_data=msg.data
+  //print(msg_data)
   if(msg_data){
     actuator.writeMicroseconds(1000); // 1ms pulse to extend the arm
-    delay(1); // the actuator takes >2s to extend/retract when loaded - give it plenty of time
+    delay(10); // the actuator takes >2s to extend/retract when loaded - give it plenty of time
   }
   else{
     actuator.writeMicroseconds(2000); // 2ms pulse to retract the arm
-    delay(1);
+    delay(10);
   }
 }
 
