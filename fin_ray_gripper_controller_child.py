@@ -24,7 +24,7 @@ class FinRayGripperControllerChild(EndEffector):
     def __init__(self):#, offset):#, startPos):
         super().__init__() #offset)#May noteed this as its from the person student example
         
-
+        print("TEST")
         #from control_example.py
         self.fin_ray_gripper_command_publisher = rospy.Publisher('/fin_ray_gripper_command_publisher', Bool, queue_size=5)
         #self.gantry_x_publisher = rospy.Publisher('/SetGantryXPos', Float32, queue_size=5)
@@ -134,8 +134,9 @@ def main():
     # exp_node()
     # test_depth() # dont go past 8
     rospy.init_node('fin_ray_gripper_controller_child')#keep
-    rospy.sleep(10)
+    # rospy.sleep(10)
     example = FinRayGripperControllerChild()#create this object in a task planner or somewhere that you rcontrolling this
+    rospy.sleep(10)
     example.pick()
 
 if __name__ == '__main__':
