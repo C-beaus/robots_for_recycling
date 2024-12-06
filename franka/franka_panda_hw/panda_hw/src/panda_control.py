@@ -206,7 +206,6 @@ class PandaControl():
         self.set_gripper_distance(OPEN)
 
 
-
 def default_test():
     pandaController = PandaControl()
 
