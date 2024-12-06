@@ -27,6 +27,7 @@ class FinRayGripperControllerChild(EndEffector):
         print("TEST")
         #from control_example.py
         self.fin_ray_gripper_command_publisher = rospy.Publisher('/fin_ray_gripper_command_publisher', Bool, queue_size=5)
+        self.fin_ray_gripper_command_subscriber = rospy.Subscriber("/fin_ray_gripper_command_subscriber", Bool, self.callback)
         #self.gantry_x_publisher = rospy.Publisher('/SetGantryXPos', Float32, queue_size=5)
         #self.gantry_z_publisher = rospy.Publisher('/SetGantryZPos', Float32,queue_size=5)
         #self.pubPneumatic = rospy.Publisher('/pneumatic_actuator', Bool, queue_size=5)
@@ -36,12 +37,19 @@ class FinRayGripperControllerChild(EndEffector):
         # rospy.Subscriber("/gantryPosZ", String, self.posz_callback)
         # rospy.Subscriber("/gantryPosX", String, self.posx_callback)
 
+    def callback(self, msg):
+            if (msg.data):
+                self.pick()
+            else:
+                self.release()
     def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit.
         #I should probably make an alalog version of this.
         msg = Bool()
         msg.data = True
 
         self.fin_ray_gripper_command_publisher.publish(msg)
+        print("sleep 3")
+        rospy.sleep(3)
         print("gripper closed")
         self.picked_bool = True
         
@@ -51,6 +59,8 @@ class FinRayGripperControllerChild(EndEffector):
         msg.data = False
 
         self.fin_ray_gripper_command_publisher.publish(msg)
+        print("sleep 3")
+        rospy.sleep(3)
         print("gripper opened")   
         self.picked_bool = False 
     
@@ -133,13 +143,13 @@ class FinRayGripperControllerChild(EndEffector):
 def main():
     rospy.init_node('fin_ray_gripper_controller_child')
     #when working with task plannin, uncomment "rospy.spin()" and comment everythiong in main that comes after
-    #rospy.spin()
+    rospy.spin()
     
-    example = FinRayGripperControllerChild()#create this object in a task planner or somewhere that you rcontrolling this
-    rospy.sleep(8)
-    example.pick()
-    rospy.sleep(8)
-    example.release()
+    #example = FinRayGripperControllerChild()#create this object in a task planner or somewhere that you rcontrolling this
+    #rospy.sleep(2)
+    #example.pick()
+    #rospy.sleep(2)
+    #example.release()
 
 if __name__ == '__main__':
     main()
