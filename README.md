@@ -1,7 +1,7 @@
 
 # Waste Sorting Model with Faster R-CNN
 
-This repository contains two scripts, `train.py` and `infer.py`, for training and inference of a waste sorting model based on Faster R-CNN with MobileNetV3 backbone. This model can be fine-tuned to detect two classes: **recycling** and **nonrecycling** objects in images.
+This repository contains two scripts, `train.py` and `infer.py`, for training and inference of a waste sorting model based on Faster R-CNN with MobileNetV3 backbone. This model can be fine-tuned to detect five classes: **cardboard**, **glass**, **metal**, **paper**, and **plastic** objects in images.
 
 ## Files in This Repository
 
