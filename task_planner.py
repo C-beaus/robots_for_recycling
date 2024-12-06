@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float64MultiArray
 import argparse
-# from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse, GraspSrv
+from robots_for_recycling.srv import ClassifySrv, GraspSrv
 
 class TaskPlanner:
-    def __init__(self, manipulator_type):
+    def __init__(self, manipulator_type, end_effector):
         rospy.init_node("Recycler")
         rospy.sleep(1.0)
         rospy.loginfo("Recycle Node Ready")
@@ -16,67 +16,63 @@ class TaskPlanner:
         self.manipulator_type = manipulator_type # string
         # rospy.Subscriber
 
-        # instantiate correct Manipulator object
-        if (manipulator_type == "franka"):
-            manipulator = Manipulator.Franka() # TODO: check this once manipulator files are known
-        elif (manipulator_type == "cartesian"): 
-            manipulator = Manipulator.Cartesian() # TODO: check this once manipulator files are known
-        else: 
-            # rospy.logerr("Invalid manipulator type - Valid types are 'franka' and 'cartesian'")
-            rospy.signal_shutdown("Invalid manipulator type - Valid types are 'franka' and 'cartesian'") # kills node if you typo it 
-        
-        self.manipulator = manipulator
+        # # instantiate correct Manipulator object
+        # if (manipulator_type == "franka"):
+        #     self.manipulator = Manipulator.Franka(end_effector) # TODO: check this once manipulator files are known
+        # elif (manipulator_type == "cartesian"): 
+        #     self.manipulator = Manipulator.Cartesian(end_effector) # TODO: check this once manipulator files are known
+        # else: 
+        #     # rospy.logerr("Invalid manipulator type - Valid types are 'franka' and 'cartesian'")
+        #     rospy.signal_shutdown("Invalid manipulator type - Valid types are 'franka' and 'cartesian'") # kills node if you typo it 
 
     def main(self, msg):
-         self.classify_publisher.publish(msg)
-        # rospy.wait_for_service('classify_waste')
-        # try:
-        #      get_bounding_boxes = rospy.ServiceProxy('clasify_waste', ClassifySrv)
-        #      yoloV5_data = get_bounding_boxes()
-        # except rospy.ServiceException as e:
-        #      print("Classify Service call failed: %s"%e)
+        # self.classify_publisher.publish(msg)
+        objects_detected = True
+        while objects_detected:
+            rospy.wait_for_service('classify_waste')
+            try:
+                get_bounding_boxes = rospy.ServiceProxy('classify_waste', ClassifySrv)
+                print("here")
+                yoloV5_data = get_bounding_boxes()
+                # print(f"here are the boxes: {yoloV5_data}")
+                # print(f"type is: {type(yoloV5_data)}")
+                # print(f"dir is: {dir(yoloV5_data)}")
+                # print(f"output: {yoloV5_data.output}")
+                # print(f"output.data {yoloV5_data.output.data}")
 
-        # rospy.wait_for_service('get_grasps')
-        # try:
-        #      find_grasps = rospy.ServiceProxy('get_grasps', GraspSrv)
-        #      grasps = find_grasps(yoloV5_data)
-        # except rospy.ServiceException as e:
-        #      print("Grasp Service call failed: %s"%e)
-
-        ## choose highest qual grasp
-        # bestGrasp = 0
-        # bestGraspListPosition = 0
-        # thisListPosition = 0
-        # for g in grasps:
+                if yoloV5_data.output.data == []:
+                    objects_detected = False
+                    print("breaking")
+                    break
+            except rospy.ServiceException as e:
+                print("Classify Service call failed: %s"%e)
             
-        #     g[1] = thisGrasp
+            print("done with bboxes, waiting for ")
+            rospy.wait_for_service('get_grasps')
+            try:
+                print("getting grasps")
+                find_grasps = rospy.ServiceProxy('get_grasps', GraspSrv)
+                bbox_msg = Float64MultiArray()
+                bbox_msg.data = yoloV5_data.output.data
 
-        #     if (thisGrasp >= bestGrasp):
-        #         bestGrasp = thisGrasp
-        #         bestGraspListPosition = thisListPosition
-        #     thisListPosition += 1
-
-        ## Send grasps to mainipulator
-        # grasp is formatted as: x y z angle class_label
-        # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
-        # Also add argument to pass in for type of end effector gripper?
-        # Task planner node should also handle talking to conveyor belt to move 
+                grasp = find_grasps(bbox_msg)
+            except rospy.ServiceException as e:
+                print("Grasp Service call failed: %s"%e)
 
 
-        # self.manipulator.pickMove(bestGrasp)
+            print(f"here are the grasps{grasp}")
 
-         # while objects are not 0:
-             ## recieve classified image with objects, object types, bounding boxes, coordinates
-             ## send image to grasp generator
-             ## recieve list of grasps, quality values
-             # choose highest qual grasp
-             # pickmove to highest quality
-             # releasemove to recycling box
+            # self.manipulator.pickMove(grasp)
 
-         # in discord: 
-            # manipulator ppl: manipulator is a superclass of the actual arms, what are the attributes + methods in the manipulator superclass?
-            # UPLOAD EVERYTHING TO GIT!!!
-            # same with grasp planner - confirm attributes + methods
+            # # cartesian method should handle moving the conveyor belt to the cartesian robot and then back for further classification and finding best grasp
+            # self.manipulator.placeMove(grasp.class_label)
+            
+
+            ## Send grasps to mainipulator
+            # grasp is formatted as: x y z angle width class_label
+            # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
+            # Also add argument to pass in for type of end effector gripper?
+            # Task planner node should also handle talking to conveyor belt to move    
 
 
 
@@ -94,6 +90,13 @@ if __name__ == '__main__':
          help="What manipulator do you want to use for recycling?"
     )
 
+    parser.add_argument(
+        "-e",
+        "--end_effector",
+        default=None,
+        help="What end effector is on the manipulator you are using?"
+    )
+
     args = parser.parse_args()
 
-    TaskPlanner(args.manipulator_type).run()
+    TaskPlanner(args.manipulator_type, args.end_effector).run()

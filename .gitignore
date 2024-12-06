@@ -18,3 +18,6 @@ waste_detector_repo.code-workspace
 checkpoints
 infer.log
 train.log
+package.xml
+CMakeLists.txt
+include
