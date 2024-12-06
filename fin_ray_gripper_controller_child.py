@@ -39,7 +39,7 @@ class FinRayGripperControllerChild(EndEffector):
     def pick(self):  # Closes the gripper either to max encoder value or until the max load is hit.
         #I should probably make an alalog version of this.
         msg = Bool()
-        msg.data = False
+        msg.data = True
 
         self.fin_ray_gripper_command_publisher.publish(msg)
         print("gripper closed")
@@ -48,7 +48,7 @@ class FinRayGripperControllerChild(EndEffector):
     def release(self):
         #report offset
         msg = Bool()
-        msg.data = True
+        msg.data = False
 
         self.fin_ray_gripper_command_publisher.publish(msg)
         print("gripper opened")   
@@ -131,13 +131,15 @@ class FinRayGripperControllerChild(EndEffector):
 #        self.picked_bool = True #may not be true if pose is open position, but user will probably use release in that case
 
 def main():
-    # exp_node()
-    # test_depth() # dont go past 8
-    rospy.init_node('fin_ray_gripper_controller_child')#keep
-    # rospy.sleep(10)
+    rospy.init_node('fin_ray_gripper_controller_child')
+    #when working with task plannin, uncomment "rospy.spin()" and comment everythiong in main that comes after
+    #rospy.spin()
+    
     example = FinRayGripperControllerChild()#create this object in a task planner or somewhere that you rcontrolling this
-    rospy.sleep(10)
+    rospy.sleep(8)
     example.pick()
+    rospy.sleep(8)
+    example.release()
 
 if __name__ == '__main__':
     main()

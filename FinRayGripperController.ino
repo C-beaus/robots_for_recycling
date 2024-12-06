@@ -1,6 +1,6 @@
 // Cooper Ducharme(12/4/2024) 
-utilizes code from the site :
-https://wiki.ros.org/rosserial_arduino/Tutorials/Blink
+//utilizes code from the site :
+//https://wiki.ros.org/rosserial_arduino/Tutorials/Blink
 
 
 // Caleb Williams (02/07/2020)
