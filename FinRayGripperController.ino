@@ -1,4 +1,7 @@
 // Cooper Ducharme(12/4/2024) 
+utilizes code from the site :
+https://wiki.ros.org/rosserial_arduino/Tutorials/Blink
+
 
 // Caleb Williams (02/07/2020)
 // Actuates the Actuonix PQ12-100-6-R linear actuator
@@ -14,23 +17,33 @@
 #include <Servo.h>
 #include <ros.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Empty.h>
+
 
 ros::NodeHandle nh;
 
-
+//old
 Servo actuator; // create a servo object named "actuator"
 
 #define PIN 9
 bool msg_data = false;// one of these needs to go question
 
-void pinControlCallback(const std_msgs::Bool &msg){
-    digitalWrite(PIN, msg.data ? HIGH : LOW);
-    msg_data = msg.data;
-   Serial.print("recieved ");//,msg_data)
+void pinControlCallback( const std_msgs::Bool& msg){
+  Serial.print("recieving immentently");
+  //digitalWrite(PIN, msg.data ? HIGH : LOW);
+  msg_data = msg.data;
+  Serial.print("recieved ");//,msg_data)
+  if(msg_data){//question
+    actuator.writeMicroseconds(1000); // 1ms pulse to extend the arm
+    delay(10); // the actuator takes >2s to extend/retract when loaded - give it plenty of time
+  } else {
+    actuator.writeMicroseconds(2000); // 2ms pulse to retract the arm
+    delay(10);
+  }
 
 }
-
-ros::Subscriber<std_msgs::Bool> pin_control_sub("fin_ray_gripper_command_publisher", &pinControlCallback);
+//sub instead of pin_control_sub?
+ros::Subscriber<std_msgs::Bool> pin_control_sub("fin_ray_gripper_command_publisher", &pinControlCallback );
 
 void setup() {
   //bool msg_data = false;// one of these needs to go question
@@ -50,14 +63,6 @@ void loop() {
   // Extend and retract the actuator arm on a 5 second interval
   //bool msg_data=msg.data
   //print(msg_data)
-  if(msg_data){//question
-    actuator.writeMicroseconds(1000); // 1ms pulse to extend the arm
-    delay(10); // the actuator takes >2s to extend/retract when loaded - give it plenty of time
-  }
-  else{
-    actuator.writeMicroseconds(2000); // 2ms pulse to retract the arm
-    delay(10);
-  }
 }
 
 //void open_gripper(){
