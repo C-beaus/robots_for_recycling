@@ -33,6 +33,7 @@ dataset/
   All values are normalized between 0 and 1.
 
 ## Usage
+publish any float  to [THIS SPECIFIC ROSTOPIC] to start the classification loop
 
 ### Training
 

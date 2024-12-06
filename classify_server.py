@@ -12,10 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pyrealsense2 as rs
 
-from train import WasteDataset
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-import random
 
 import cv2
 from PIL import Image
@@ -23,7 +21,7 @@ import numpy as np
 
 import rospy
 from std_msgs.msg import Float64MultiArray, Float64
-# from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse
+from robots_for_recycling.srv import ClassifySrv
 
 class ClassifyServer:
     def __init__(self):
@@ -31,7 +29,7 @@ class ClassifyServer:
         rospy.sleep(1.0)
         rospy.loginfo("Classify Server Ready")
 
-        # self.s = rospy.Service('classify_waste', ClassifySrv, self.main())
+        self.s = rospy.Service('classify_waste', ClassifySrv, self.main)
 
 
         # Set up logging
@@ -61,11 +59,15 @@ class ClassifyServer:
 
         self.NUM_CLASSES = len(self.CLASSES)
 
-        self.model_name = '/home/sultan/catkin_ws/src/my_sample_package/scripts/models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth'
+        # if issues: make sure you have the full folder open so that relative filepaths work 
+        current_dir = os.getcwd()
+        print(current_dir)
+        current_dir = os.path.join(current_dir, "src/robots_for_recycling")
+        self.model_name = os.path.join(current_dir, 'models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth')
         self.confidence_threshold = 0.7
 
-        self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
-        rospy.Subscriber('/classify', Float64, self.main)
+        # self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
+        # rospy.Subscriber('/classify', Float64, self.main)
     
     def capture_frames(self):
         
@@ -213,8 +215,8 @@ class ClassifyServer:
         # cap.release()
         # cv2.destroyAllWindows()
         self.logger.info("Real-time detection ended.")
-        # return ClassifySrvResponse(yolo_v5_msg)
-        self.box_publisher.publish(yolo_v5_msg)
+        return yolo_v5_msg
+        # self.box_publisher.publish(yolo_v5_msg)
 
     def run(self):
         rospy.spin()
