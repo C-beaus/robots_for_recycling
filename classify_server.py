@@ -62,7 +62,7 @@ class ClassifyServer:
         # if issues: make sure you have the full folder open so that relative filepaths work 
         current_dir = os.getcwd()
         print(current_dir)
-        current_dir = os.path.join(current_dir, "src/robots_for_recycling")
+        current_dir = os.path.join(current_dir, "catkin_ws/src/robots_for_recycling")
         self.model_name = os.path.join(current_dir, 'models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth')
         self.confidence_threshold = 0.7
 
@@ -192,13 +192,14 @@ class ClassifyServer:
         yolo_v5_array = []
         i = 0
         for box, label, score in zip(boxes, labels, scores):
-            xmin, ymin, xmax, ymax = map(int, box)
-            width = xmax - xmin
-            height = ymax - ymin
-            center_x = (xmax + xmin) / 2
-            center_y = (ymax + ymin) / 2
-            yolo_v5_array.append([label, center_x, center_y, width, height])
-            i += 1
+            if score > self.confidence_threshold:
+                xmin, ymin, xmax, ymax = map(int, box)
+                width = xmax - xmin
+                height = ymax - ymin
+                center_x = (xmax + xmin) / 2
+                center_y = (ymax + ymin) / 2
+                yolo_v5_array.append([label, center_x, center_y, width, height])
+                i += 1
         yolo_v5_array = np.array(yolo_v5_array, dtype=np.float64).flatten()
         yolo_v5_msg = Float64MultiArray()
         yolo_v5_msg.data = yolo_v5_array

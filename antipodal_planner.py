@@ -30,7 +30,7 @@ class AntipodalPlanner:
         self.pose_publisher = rospy.Publisher('/franka_pose', Float64MultiArray, queue_size=10)
         current_dir = os.getcwd()
         print(current_dir)
-        current_dir = os.path.join(current_dir, "src/robots_for_recycling") ## b/c catkin workspace is current working directory, append this to front of relative path
+        current_dir = os.path.join(current_dir, "catkin_ws/src/robots_for_recycling") ## b/c catkin workspace is current working directory, append this to front of relative path
 
         self.model_path = os.path.join(current_dir, 'antipodal_grasp_network/trained-models/cornell-randsplit-rgbd-grconvnet3-drop1-ch16/epoch_17_iou_0.96')
         self.generator = GraspGenerator(saved_model_path=self.model_path)
