@@ -3,6 +3,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray
 import numpy as np
 from suction_gripper_affordance import SuctionGenerator
+from robots_for_recycling.srv import SuctionSrv
 
 """
 This class handles translating bounding boxes for use by the manipulation team
@@ -14,6 +15,9 @@ class SuctionPlanner:
         """
         rospy.init_node("suction_planner")
         self.boxes = []
+
+        # Create service
+        self.s = rospy.Service('get_suctions', SuctionSrv, self.recieve_boxes)
 
         # Create subscriber
         rospy.Subscriber('/objects_detected', Float64MultiArray, self.recieve_boxes)
