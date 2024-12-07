@@ -2,6 +2,7 @@
 import rospy
 from std_msgs.msg import Float64MultiArray
 import numpy as np
+from suction_gripper_affordance import SuctionGenerator
 
 """
 This class handles translating bounding boxes for use by the manipulation team
@@ -20,7 +21,7 @@ class SuctionPlanner:
 
     def generatePose(self):
         # TODO: Call class to calculate and return poses based on bounding boxes
-        suction_poses = None
+        suction_poses = SuctionGenerator().generate_suction()
         flattened_suction_poses = suction_poses.flatten()
 
         # Generate message
