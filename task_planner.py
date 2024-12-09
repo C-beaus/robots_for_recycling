@@ -134,57 +134,51 @@ class TaskPlanner:
 
     def main(self, event):
         
-        objects_detected = True
+        # Capture camera frames
+        rgb_image, depth_image, timestamp = self.call_camera_service()
 
-        while objects_detected:
-            # Capture camera frames
-            rgb_image, depth_image, timestamp = self.call_camera_service()
+        if rgb_image and depth_image:
+            # Run classification and grasp inference in parallel
+            tasks = [
+                (self.call_classification_service, rgb_image),
+                (self.call_grasp_inference_service, depth_image, rgb_image)
+            ]
+            results = self.run_parallel_tasks(tasks)
 
-            if rgb_image and depth_image:
-                # Run classification and grasp inference in parallel
-                tasks = [
-                    (self.call_classification_service, rgb_image),
-                    (self.call_grasp_inference_service, depth_image, rgb_image)
-                ]
-                results = self.run_parallel_tasks(tasks)
+            # Handle classification results
+            bboxes = results[0] if results[0] else None
+            if not bboxes:
+                rospy.logwarn("No bounding boxes detected from classification. Skipping to next iteration.")
 
-                # Handle classification results
-                bboxes = results[0] if results[0] else None
-                if not bboxes:
-                    rospy.logwarn("No bounding boxes detected from classification. Skipping to next iteration.")
-                    continue
+            # Handle grasp inference results
+            if not results[1]:
+                rospy.logwarn("Grasp inference failed. Skipping to next iteration.")
 
-                # Handle grasp inference results
-                if not results[1]:
-                    rospy.logwarn("Grasp inference failed. Skipping to next iteration.")
-                    continue
+            rospy.loginfo(f"Results from parallel inferences: {results}")
 
-                rospy.loginfo(f"Results from parallel inferences: {results}")
+        else:
+            rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
 
-            else:
-                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
-                continue
+        # Perform grasp selection
+        grasps = self.call_grasp_selection_service(bboxes)
 
-            # Perform grasp selection
-            grasps = self.call_grasp_selection_service(bboxes)
-
-            if grasps:
-                rospy.loginfo("Grasps received for given objects.")
-            else:
-                rospy.logwarn("No grasps received.")
+        if grasps:
+            rospy.loginfo("Grasps received for given objects.")
+        else:
+            rospy.logwarn("No grasps received.")
 
 
-            # self.manipulator.pickMove(grasp)
+        # self.manipulator.pickMove(grasp)
 
-            # # cartesian method should handle moving the conveyor belt to the cartesian robot and then back for further classification and finding best grasp
-            # self.manipulator.placeMove(grasp.class_label)
-            
+        # # cartesian method should handle moving the conveyor belt to the cartesian robot and then back for further classification and finding best grasp
+        # self.manipulator.placeMove(grasp.class_label)
+        
 
-            ## Send grasps to mainipulator
-            # grasp is formatted as: x y z angle width class_label
-            # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
-            # Also add argument to pass in for type of end effector gripper?
-            # Task planner node should also handle talking to conveyor belt to move
+        ## Send grasps to mainipulator
+        # grasp is formatted as: x y z angle width class_label
+        # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
+        # Also add argument to pass in for type of end effector gripper?
+        # Task planner node should also handle talking to conveyor belt to move
 
 
     def run(self):
