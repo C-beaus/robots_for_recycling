@@ -21,7 +21,7 @@ import numpy as np
 
 import rospy
 from std_msgs.msg import Float64MultiArray, Float64
-from robots_for_recycling.srv import ClassifySrv
+from robots_for_recycling.srv import ClassifySrv, ClassifySrvResponse
 
 class ClassifyServer:
     def __init__(self):
@@ -29,7 +29,7 @@ class ClassifyServer:
         rospy.sleep(1.0)
         rospy.loginfo("Classify Server Ready")
 
-        self.s = rospy.Service('classify_waste', ClassifySrv, self.main)
+        self.s = rospy.Service('classify_waste', ClassifySrv, self.run_classifier)
 
 
         # Set up logging
@@ -66,45 +66,6 @@ class ClassifyServer:
         self.model_name = os.path.join(current_dir, 'models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth')
         self.confidence_threshold = 0.7
 
-        # self.box_publisher = rospy.Publisher('/objects_detected', Float64MultiArray, queue_size=10)
-        # rospy.Subscriber('/classify', Float64, self.main)
-    
-    def capture_frames(self):
-        
-        # Create a pipeline
-        pipeline = rs.pipeline()
-
-        # Create a config and enable the bag file
-        config = rs.config()
-
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.rgb8, 30)
-
-        pipeline.start(config)
-
-        # Create an align object to align color frames to depth frames
-        align_to = rs.stream.color
-        align = rs.align(align_to)
-        
-        try:
-            while True:
-
-                frames = pipeline.wait_for_frames()
-                aligned_frames = align.process(frames)
-                color_frame = aligned_frames.first(rs.stream.color)
-
-                # Keep looping until valid depth and color frames are received.
-                if not color_frame:
-                    continue
-
-                color_image = np.asanyarray(color_frame.get_data())
-                break
-        
-        except RuntimeError as e:
-            print(f"Error occurred: {e}")
-        finally:
-            pipeline.stop()
-            return color_image
 
     def get_model_instance_segmentation(self, num_classes):
         model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(pretrained=False)
@@ -137,7 +98,8 @@ class ClassifyServer:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         return frame
 
-    def main(self, msg):
+    def run_classifier(self, req):
+        
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = self.get_model_instance_segmentation(self.NUM_CLASSES)
         # model.load_state_dict(torch.load('fasterrcnn_model.pth', map_location=device))
@@ -172,7 +134,7 @@ class ClassifyServer:
         #     sys.exit(1)
             # break
 
-        rgb_frame = self.capture_frames()
+        rgb_frame = req.rgb_image
 
         # Convert frame to RGB and PIL Image
         # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -201,23 +163,14 @@ class ClassifyServer:
                 yolo_v5_array.append([label, center_x, center_y, width, height])
                 i += 1
         yolo_v5_array = np.array(yolo_v5_array, dtype=np.float64).flatten()
-        yolo_v5_msg = Float64MultiArray()
-        yolo_v5_msg.data = yolo_v5_array
-        rospy.loginfo(f'Sending bounding boxes {yolo_v5_msg.data}')
-        # self.box_publisher.publish(yolo_v5_msg)
 
-        # Display the frame
-        # cv2.imshow('Real-Time Waste Detector', frame)
+        response = ClassifySrvResponse()
+        response.bbs = yolo_v5_array
+        rospy.loginfo(f'Sending bounding boxes {response.bbs}')
 
-        # Press 'q' to exit
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     rospy.sleep(10)
-
-        # cap.release()
-        # cv2.destroyAllWindows()
         self.logger.info("Real-time detection ended.")
-        return yolo_v5_msg
-        # self.box_publisher.publish(yolo_v5_msg)
+
+        return response
 
     def run(self):
         rospy.spin()

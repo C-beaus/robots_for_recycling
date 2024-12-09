@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
   message_generation
 )
 
@@ -59,6 +60,8 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    ClassifySrv.srv
    GraspSrv.srv
+   CameraSrv.srv
+   rgbdSrv.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -72,6 +75,7 @@ find_package(catkin REQUIRED COMPONENTS
  generate_messages(
    DEPENDENCIES
    std_msgs
+   sensor_msgs
  )
 
 ################################################
@@ -106,7 +110,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robots_for_recycling
- CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+ CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -164,6 +168,7 @@ catkin_install_python(PROGRAMS
   task_planner.py
   classify_server.py
   antipodal_planner.py
+  camera_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

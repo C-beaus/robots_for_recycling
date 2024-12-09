@@ -7,10 +7,10 @@ if package_path not in sys.path:
     sys.path.append(package_path)
 import rospy
 from std_msgs.msg import Float64MultiArray
-from run_grasp_generator_modified import generate_poses
+from run_grasp_generator_modified import run_inference
 from inference.grasp_generator_modified import GraspGenerator
 import numpy as np
-from robots_for_recycling.srv import GraspSrv
+from robots_for_recycling.srv import GraspSrv, rgbdSrv, GraspSrvResponse, rgbdSrvResponse
 
 """
 This class handles translating bounding boxes for use by the manipulation team
@@ -21,13 +21,13 @@ class AntipodalPlanner:
         Class constructor
         """
         rospy.init_node("Antipodal_Planner")
-        self.boxes = []
+        self.boxes = None
+        self.cam2bot = np.eye(4) # Change this to actual extrinsics. Ensure it is being passed through till the end.
 
-        self.s = rospy.Service('get_grasps', GraspSrv, self.recieve_boxes)
+        self.grasp_generation_service = rospy.Service('run_grasp_model', rgbdSrv, self.run_grasp_inference)
+        self.grasp_selection_service = rospy.Service('select_grasps_from_bbs', GraspSrv, self.select_bbs_grasps)
 
         # Create subscriber
-        rospy.Subscriber('/objects_detected', Float64MultiArray, self.recieve_boxes)
-        self.pose_publisher = rospy.Publisher('/franka_pose', Float64MultiArray, queue_size=10)
         current_dir = os.getcwd()
         print(current_dir)
         current_dir = os.path.join(current_dir, "catkin_ws/src/robots_for_recycling") ## b/c catkin workspace is current working directory, append this to front of relative path
@@ -37,36 +37,42 @@ class AntipodalPlanner:
         self.generator.load_model()
         rospy.loginfo(f'Grasp Node Ready.')
 
+    def run_grasp_inference(self, req):
+        self.depth_img = req.depth_image
+        self.color_img = req.rgb_image
+        self.q_img, self.ang_img, self.width_img = run_inference(generator=self.generator, color_image=self.color_img, depth_image=self.depth_img, use_cam=False)
+        
+        if self.q_img and self.ang_img and self.width_img:
+            response = rgbdSrvResponse()
+            response.infer_success = True
+            return response
+
+
+
     def generatePose(self):
-        grasp_poses = generate_poses(generator=self.generator, bboxes=self.boxes, camera2robot=np.eye(4), color_image=None, depth_image=None, use_cam=True)
+
+        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_image, 
+                                                bboxes=self.bboxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
+                                                fx=605.622314453125, fy=605.8401489257812)
+        grasp_poses = np.array(grasp_poses, dtype=np.float64)
         flattened_grasp_poses = grasp_poses.flatten()
-        msg = Float64MultiArray()
-        msg.data = flattened_grasp_poses
-        rospy.loginfo(f'Grasp poses: {msg.data.reshape(-1, 6)}')
-        # Publish the pose information
-        return msg
-        # self.pose_publisher.publish(msg)
 
-    def recieve_boxes(self, msg: Float64MultiArray):
-        """
-        Updates the bounding box information to be used later
+        rospy.loginfo(f'Grasp poses: {grasp_poses}')
 
-        The array msg is formatted as yolo V5 so each array in the list contains class label, center_x, center_y, width, height
-        Classes are background, cardboard, glass, metal, paper, plastic in that order so 0 is background, 1 cardboard, etc.
-        """
-        # print(f"received message: {msg}")
-        # print(f"------ dir: {dir(msg)}")
-        # print(f"****** msg.data: {msg.data}")
-        # print(f"@@@@@@@@ dir(msg.data) {dir(msg.data)}")
-        # print(f"!!!!!!!!!!! msg.data.data {msg.data.data}")
-        # Update bounding boxes array
-        boxes_array = np.array(msg.data.data, dtype=np.float64)
+        return flattened_grasp_poses
+
+    def select_bbs_grasps(self, req):
+
+        boxes_array = np.array(req.bbs, dtype=np.float64)
         self.boxes = boxes_array.reshape(-1, 5)
         rospy.loginfo(f'Received bounding boxes {self.boxes}')
+
         # Generate the pose with the bounding boxes
-        msg_to_send = self.generatePose()
-        print(f"msg_to_send {msg_to_send}")
-        return msg_to_send
+        flattened_grasp_poses = self.generatePose()
+        response = GraspSrvResponse()
+        response.grasps = flattened_grasp_poses
+        
+        return response
 
 
     def run(self):

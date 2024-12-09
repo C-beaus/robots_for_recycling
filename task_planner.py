@@ -3,178 +3,175 @@
 import rospy
 from std_msgs.msg import Float64, Float64MultiArray
 import argparse
-from robots_for_recycling.srv import ClassifySrv, GraspSrv
+from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+from concurrent.futures import ThreadPoolExecutor
 
 
 
 class TaskPlanner:
-    def __init__(self, manipulator_type, end_effector):
+    def __init__(self):
         rospy.init_node("Recycler")
         rospy.sleep(1.0)
         rospy.loginfo("Recycle Node Ready")
 
-        self.classify_publisher = rospy.Publisher('/classify', Float64, queue_size=10)
-        rospy.Subscriber('/recycle', Float64, self.main)
-        self.manipulator_type = manipulator_type # string
-        # rospy.Subscriber
+        self.drif_speed = 0
+        self.executor = ThreadPoolExecutor()
+        self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
+        timer = rospy.Timer(rospy.Duration(20), self.main)
 
-        # # instantiate correct Manipulator object
-        # if (manipulator_type == "franka"):
-        #     self.manipulator = Manipulator.Franka(end_effector) # TODO: check this once manipulator files are known
-        # elif (manipulator_type == "cartesian"): 
-        #     self.manipulator = Manipulator.Cartesian(end_effector) # TODO: check this once manipulator files are known
-        # else: 
-        #     # rospy.logerr("Invalid manipulator type - Valid types are 'franka' and 'cartesian'")
-        #     rospy.signal_shutdown("Invalid manipulator type - Valid types are 'franka' and 'cartesian'") # kills node if you typo it 
+    def conveyor_speed_callback(self, msg):
+        self.drif_speed = msg.data
 
-    def capture_frames(self):
+    def call_camera_service(self):
         
-        # Create a pipeline
-        pipeline = rs.pipeline()
-
-        print("captureing frames")
-        # Create a config and enable the bag file
-        config = rs.config()
-
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.rgb8, 30)
-
-        pipeline.start(config)
-
-        print('pipeline started')
-
-        # Create an align object to align color frames to depth frames
-        align_to = rs.stream.color
-        align = rs.align(align_to)
-        
+        # Wait for the service to become available
+        rospy.wait_for_service('camera_service')
         try:
-            while True:
 
-                frames = pipeline.wait_for_frames()
-                aligned_frames = align.process(frames)
-                color_frame = aligned_frames.first(rs.stream.color)
+            get_rgbd_frames = rospy.ServiceProxy('camera_service', CameraSrv)
 
-                # Keep looping until valid depth and color frames are received.
-                if not color_frame:
+            # Call the service
+            rospy.loginfo("Calling the camera service to get RGB and depth frames...")
+            response = get_rgbd_frames()
+
+            # Check and handle the response
+            if response.success:
+                rospy.loginfo("RGB and Depth pair received. Ready For Classification and Grasp Generation")
+                return response.rgb_image, response.depth_image, response.timestamp
+            else:
+                rospy.logwarn("Capture of RGB and Depth frames was unsuccessful.")
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to the camera service failed: {e}")
+    
+    def call_grasp_inference_service(self, depth_image, rgb_image):
+
+        # Wait for the service to become available
+        rospy.wait_for_service('run_grasp_model')
+        try:
+
+            run_antipodal_network = rospy.ServiceProxy('run_grasp_model', rgbdSrv)
+            request = rgbdSrvRequest()
+            request.rgb_image = rgb_image
+            request.depth_image = depth_image
+            
+            # Call the service
+            rospy.loginfo("Calling the antipodal model service to run inference on current frames...")
+            response = run_antipodal_network(request)
+
+            # Check and handle the response
+            if response.success:
+                rospy.loginfo("Antipodal inference completed successfully. Ready to receive bounding boxes.")
+                return response.infer_success
+            else:
+                rospy.logwarn("Antipodal inference did not succeed.")
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to anipodal inference service failed: {e}")
+
+    def call_grasp_selection_service(self, bboxes):
+
+        # Wait for the service to become available
+        rospy.wait_for_service('select_grasps_from_bbs')
+        try:
+
+            get_grasps = rospy.ServiceProxy('select_grasps_from_bbs', GraspSrv)
+            request = GraspSrvRequest()
+            request.bbs = bboxes
+            
+            # Call the service
+            rospy.loginfo("Calling the antipodal grasp generation service to select grasps within given bounding boxes...")
+            response = get_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 6) by manipualtor node
+
+            # Check and handle the response
+            if response.success:
+                rospy.loginfo("Grasp Selection completed successfully. Ready to execute grasps.")
+                return response.grasps
+            else:
+                rospy.logwarn("Grasp Selection did not succeed.")
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to anipodal grasp selection service failed: {e}")
+    
+    def call_classification_service(self, rgb_image):
+
+        # Wait for the service to become available
+        rospy.wait_for_service('classify_waste')
+        try:
+
+            get_bboxes = rospy.ServiceProxy('classify_waste', ClassifySrv)
+            request = ClassifySrvRequest()
+            request.rgb_image = rgb_image
+            
+            # Call the service
+            rospy.loginfo("Calling the classification service to generate bounding boxes...")
+            response = get_bboxes(request)
+
+            # Check and handle the response
+            if response.success:
+                rospy.loginfo("Classification completed successfully. Ready to call grasp selection service using bboxes.")
+                return response.bbs
+            else:
+                rospy.logwarn("Classification did not succeed.")
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to classification service failed: {e}")
+    
+    def run_parallel_tasks(self, tasks):
+        futures = [self.executor.submit(task[0], *task[1:]) for task in tasks]
+        results = []
+        for future in futures:
+            try:
+                results.append(future.result())
+            except Exception as e:
+                rospy.logerr(f"Error in parallel task execution: {e}")
+        return results
+
+
+
+    def main(self, event):
+        
+        objects_detected = True
+
+        while objects_detected:
+            # Capture camera frames
+            rgb_image, depth_image, timestamp = self.call_camera_service()
+
+            if rgb_image and depth_image:
+                # Run classification and grasp inference in parallel
+                tasks = [
+                    (self.call_classification_service, rgb_image),
+                    (self.call_grasp_inference_service, depth_image, rgb_image)
+                ]
+                results = self.run_parallel_tasks(tasks)
+
+                # Handle classification results
+                bboxes = results[0] if results[0] else None
+                if not bboxes:
+                    rospy.logwarn("No bounding boxes detected from classification. Skipping to next iteration.")
                     continue
 
-                color_image = np.asanyarray(color_frame.get_data())
-                break
-        
-        except RuntimeError as e:
-            print(f"Error occurred: {e}")
-        finally:
-            pipeline.stop()
-            return color_image
-        
-    # def draw_bounding_boxes(self, frame, boxes_list): 
-    #     for label, center_x, center_y, width, height in boxes_list:
-    #         if score > threshold:
-    #             xmin, ymin, xmax, ymax = map(int, box)
-    #             class_name = self.CLASSES[label]
-    #             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-    #             cv2.putText(frame, f'{class_name}: {score:.2f}', (xmin, ymin - 10),
-    #                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    #     return frame
+                # Handle grasp inference results
+                if not results[1]:
+                    rospy.logwarn("Grasp inference failed. Skipping to next iteration.")
+                    continue
 
-    def main(self, msg):
-        # self.classify_publisher.publish(msg)
-        objects_detected = True
-        while objects_detected:
-            rospy.wait_for_service('classify_waste')
-            try:
-                get_bounding_boxes = rospy.ServiceProxy('classify_waste', ClassifySrv)
-                # print("here")
-                yoloV5_data = get_bounding_boxes()
-                # print(f"here are the boxes: {yoloV5_data}")
-                # print(f"type is: {type(yoloV5_data)}")
-                # print(f"dir is: {dir(yoloV5_data)}")
-                # print(f"output: {yoloV5_data.output}")
-                # print(f"output.data {yoloV5_data.output.data}")
+                rospy.loginfo(f"Results from parallel inferences: {results}")
 
-                if yoloV5_data.output.data == []:
-                    objects_detected = False
-                    # print("breaking")
-                    break
-            except rospy.ServiceException as e:
-                print("Classify Service call failed: %s"%e)
-            
-            # print("done with bboxes, waiting for ")
-            rospy.wait_for_service('get_grasps')
-            try:
-                # print("getting grasps")
-                find_grasps = rospy.ServiceProxy('get_grasps', GraspSrv)
-                bbox_msg = Float64MultiArray()
-                bbox_msg.data = yoloV5_data.output.data
+            else:
+                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
+                continue
 
-                grasp = find_grasps(bbox_msg)
-            except rospy.ServiceException as e:
-                print("Grasp Service call failed: %s"%e)
+            # Perform grasp selection
+            grasps = self.call_grasp_selection_service(bboxes)
 
-
-            # print(f"here are the grasps{grasp}")
-            rospy.sleep(5)
-
-            try:
-                rgb_frame = self.capture_frames()
-
-                # cv2.imshow('Real-Time Waste Detector', rgb_frame)
-
-                # Load an image (replace 'your_image.jpg' with your image file path)
-                # image = cv2.imread('your_image.jpg')
-
-                # Define the center of the circle, radius, color (BGR), and thickness
-                # center = (250, 250)  # x, y coordinates of the center
-                radius = 50          # Radius of the circle
-                color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
-                thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
-
-                # Draw the circle on the image
-
-                # print(f"here are the boxes: {grasp}")
-                # print(f"type is: {type(yoloV5_data)}")
-                # print(f"dir is: {dir(yoloV5_data)}")
-                # print(f"output: {yoloV5_data.output}")
-                print(f"output.data {grasp.output.data}")
-
-                ppx=321.1669921875
-                ppy=231.57203674316406
-                fx=605.622314453125
-                fy=605.8401489257812
-
-                center_z = grasp.output.data[2]
-                center_x = (grasp.output.data[0]/center_z) * fx + ppx
-                center_y = (grasp.output.data[1]/center_z) * fy + ppy
-                center = (int(center_x),int(center_y))
-                print(f"center is: {center}")
-                cv2.circle(rgb_frame, center, radius, color, thickness)
-                cv2.circle(rgb_frame, center, 2, color, 1)
-
-                print("going to show")
-
-                # Display the image with the circle
-                cv2.imshow('Image with Red Circle', rgb_frame)
-                rospy.sleep(1)
-
-                # Wait for a key press and close the window
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-
-                # # Optionally, save the image with the circle
-                # cv2.imwrite('image_with_red_circle.jpg', image)
-                
-
-
-                # Press 'q' to exit
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            except RuntimeError as e:
-                print("Frame missed: %s"%e)
-            # frame = self.draw_bounding_boxes(rgb_frame, boxes, labels, scores, threshold=self.confidence_threshold)
-
+            if grasps:
+                rospy.loginfo("Grasps received for given objects.")
+            else:
+                rospy.logwarn("No grasps received.")
 
 
             # self.manipulator.pickMove(grasp)
@@ -187,31 +184,15 @@ class TaskPlanner:
             # grasp is formatted as: x y z angle width class_label
             # In switch statement, instantiate subclass of manipulation class based on passed in manipulator argument
             # Also add argument to pass in for type of end effector gripper?
-            # Task planner node should also handle talking to conveyor belt to move    
-
-
+            # Task planner node should also handle talking to conveyor belt to move
 
 
     def run(self):
+        try:
             rospy.spin()
+        except rospy.ROSInterruptException:
+            rospy.loginfo("Shutting down executor")
+            self.executor.shutdown(wait=True)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-         "-m",
-         "--manipulator_type",
-         default=None,
-         help="What manipulator do you want to use for recycling?"
-    )
-
-    parser.add_argument(
-        "-e",
-        "--end_effector",
-        default=None,
-        help="What end effector is on the manipulator you are using?"
-    )
-
-    args = parser.parse_args()
-
-    TaskPlanner(args.manipulator_type, args.end_effector).run()
+    TaskPlanner().run()

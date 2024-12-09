@@ -1,2 +1,5 @@
+# Request
+sensor_msgs/Image rgb_image
 ---
-std_msgs/Float64MultiArray output
+# Response
+std_msgs/Float64MultiArray bbs # Falttened bounding boxes
