@@ -93,7 +93,7 @@ class GraspGenerator:
         for i in range(len(grasps)):
 
             # Get grasp position from model output
-            pos_z = depth[grasps[i].center[0], grasps[i].center[1]] - 0.04 # Adjust margin based on gripper geometry
+            pos_z = depth[grasps[i].center[0], grasps[i].center[1]]
             pos_x = np.multiply(grasps[i].center[1] - ppx,
                                 pos_z / fx)
             pos_y = np.multiply(grasps[i].center[0] - ppy,
@@ -110,12 +110,13 @@ class GraspGenerator:
             target_position = target_position[0:3, 0]
 
             # Convert camera to robot angle
-            angle = np.asarray([0, 0, grasps[0].angle])
+            angle = np.asarray([0, 0, grasps[i].angle])
             angle.shape = (3, 1)
             target_angle = np.dot(camera2robot[0:3, 0:3], angle)
 
             # Concatenate grasp pose with grasp angle
             grasp_pose = np.append(target_position, target_angle[2])
+            grasp_pose = np.append(grasp_pose, grasps[i].width)
             grasp_pose = np.append(grasp_pose, labels[i])
             grasp_poses.append(grasp_pose)
             
