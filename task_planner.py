@@ -83,7 +83,10 @@ class TaskPlanner:
     def main(self, msg):
         # self.classify_publisher.publish(msg)
         objects_detected = True
+        # Create a window
+        cv2.namedWindow("Live Image", cv2.WINDOW_NORMAL)
         while objects_detected:
+            rospy.sleep(10)
             rospy.wait_for_service('classify_waste')
             try:
                 get_bounding_boxes = rospy.ServiceProxy('classify_waste', ClassifySrv)
@@ -121,6 +124,8 @@ class TaskPlanner:
             try:
                 rgb_frame = self.capture_frames()
 
+                rgb_frame_copy = rgb_frame.copy()
+
                 # cv2.imshow('Real-Time Waste Detector', rgb_frame)
 
                 # Load an image (replace 'your_image.jpg' with your image file path)
@@ -150,17 +155,18 @@ class TaskPlanner:
                 center_y = (grasp.output.data[1]/center_z) * fy + ppy
                 center = (int(center_x),int(center_y))
                 print(f"center is: {center}")
-                cv2.circle(rgb_frame, center, radius, color, thickness)
-                cv2.circle(rgb_frame, center, 2, color, 1)
+                cv2.circle(rgb_frame_copy, center, radius, color, thickness)
+                cv2.circle(rgb_frame_copy, center, 2, color, 1)
 
                 print("going to show")
 
                 # Display the image with the circle
-                cv2.imshow('Image with Red Circle', rgb_frame)
-                rospy.sleep(1)
+                cv2.imshow('Live Image', rgb_frame_copy)
+                # rospy.sleep(10)
+                # rospy.sleep(1)
 
                 # Wait for a key press and close the window
-                # cv2.waitKey(0)
+                # cv2.waitKey(1)
                 # cv2.destroyAllWindows()
 
                 # # Optionally, save the image with the circle

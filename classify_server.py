@@ -127,15 +127,15 @@ class ClassifyServer:
             outputs = model([input_tensor])[0]
         return outputs
 
-    def draw_bounding_boxes(self, frame, boxes, labels, scores, threshold=0.5): 
-        for box, label, score in zip(boxes, labels, scores):
-            if score > threshold:
-                xmin, ymin, xmax, ymax = map(int, box)
-                class_name = self.CLASSES[label]
-                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.putText(frame, f'{class_name}: {score:.2f}', (xmin, ymin - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        return frame
+    # def draw_bounding_boxes(self, frame, boxes, labels, scores, threshold=0.5): 
+    #     for box, label, score in zip(boxes, labels, scores):
+    #         if score > threshold:
+    #             xmin, ymin, xmax, ymax = map(int, box)
+    #             class_name = self.CLASSES[label]
+    #             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+    #             cv2.putText(frame, f'{class_name}: {score:.2f}', (xmin, ymin - 10),
+    #                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    #     return frame
 
     def main(self, msg):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

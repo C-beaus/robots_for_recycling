@@ -206,13 +206,14 @@ class InferLive:
                 yolo_v5_array = []
                 i = 0
                 for box, label, score in zip(boxes, labels, scores):
-                    xmin, ymin, xmax, ymax = map(int, box)
-                    width = xmax - xmin
-                    height = ymax - ymin
-                    center_x = (xmax + xmin) / 2
-                    center_y = (ymax + ymin) / 2
-                    yolo_v5_array.append([label, center_x, center_y, width, height])
-                    i += 1
+                    if score > self.confidence_threshold:
+                        xmin, ymin, xmax, ymax = map(int, box)
+                        width = xmax - xmin
+                        height = ymax - ymin
+                        center_x = (xmax + xmin) / 2
+                        center_y = (ymax + ymin) / 2
+                        yolo_v5_array.append([label, center_x, center_y, width, height])
+                        i += 1
                 # yolo_v5_msg = Float64MultiArray()
                 # yolo_v5_msg.data = yolo_v5_array
                 # self.box_publisher.publish(yolo_v5_msg)
