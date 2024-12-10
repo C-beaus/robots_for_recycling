@@ -206,7 +206,8 @@ class TaskPlanner:
                 rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
                 return
 
-            suction_grasps = self.call_suction_grasp_service(rgb_image, bboxes)
+            suction_grasps = self.call_suction_grasp_service(rgb_image, bboxes) # This is a flat array. needs to be reshaped like 
+                                                                                # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
 
             # Handle suciton grasp results
             if not suction_grasps:
