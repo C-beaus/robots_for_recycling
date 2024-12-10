@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import Float64, Float64MultiArray
 import argparse
-from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest
+from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, SuctionSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest, SuctionSrvRequest
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -106,8 +106,31 @@ class TaskPlanner:
     def call_cartesian_robot_service(self, grasps):
         raise NotImplementedError
     
-    def call_suction_grasp_service(self, rgb_image, bboxes):
-        raise NotImplementedError
+    def call_suction_grasp_service(self, depth_image, bboxes):
+        
+        # Wait for the service to become available
+        rospy.wait_for_service('suction_planner_service')
+        try:
+
+            get_suction_grasps = rospy.ServiceProxy('suction_planner_service', SuctionSrv)
+            request = SuctionSrvRequest()
+            request.bbs = bboxes
+            request.depth_image = depth_image
+            
+            # Call the service
+            rospy.loginfo("Calling the suction grasp generation service to generate grasps within given bounding boxes...")
+            response = get_suction_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 4) by manipualtor node
+
+            # Check and handle the response
+            if response.success:
+                rospy.loginfo("Suction Grasp generation completed successfully. Ready to execute grasps.")
+                return response.grasps
+            else:
+                rospy.logwarn("Grasp generation did not succeed.")
+                return None
+
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to suction grasp selection service failed: {e}")
     
     def call_classification_service(self, rgb_image):
 
@@ -206,7 +229,7 @@ class TaskPlanner:
                 rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
                 return
 
-            suction_grasps = self.call_suction_grasp_service(rgb_image, bboxes) # This is a flat array. needs to be reshaped like 
+            suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
                                                                                 # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
 
             # Handle suciton grasp results
