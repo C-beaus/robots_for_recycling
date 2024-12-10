@@ -28,8 +28,9 @@ class TaskPlanner:
         self.thread_franka.start()
         self.thread_cartesian.start()
 
-        self.franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
-        self.cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+        self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+        rospy.sleep(0.5)
+        self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
 
         rospy.on_shutdown(self.shutdown)
 
