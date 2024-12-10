@@ -12,6 +12,15 @@ import os
 import rospy
 import serial
 import time
+#Should name the folder that the functions you're trying to call are in?
+script_dir = os.path.dirname(os.path.abspath(__file__))
+package_path = os.path.join(script_dir, "src")
+print(package_path)
+#package_path = home/merlab/RoboticRecycling2023/RBE595/src/robot_recycling/src
+#package_path = os.path.join("src", "src")
+if package_path not in sys.path:
+    sys.path.append(package_path)
+
 from dynamixel_sdk import *
 from dynamixel_sdk_examples.srv import * 
 from dynamixel_sdk_examples.msg import *
