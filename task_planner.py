@@ -8,6 +8,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 
 
@@ -18,10 +19,20 @@ class TaskPlanner:
         rospy.loginfo("Recycle Node Ready")
 
         self.drift_speed = 0
-        self.executor_franka = ThreadPoolExecutor()
-        self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
-        franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
-        cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+        self.executor = ThreadPoolExecutor()
+        self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
+
+        self.thread_franka = threading.Thread(target=self.run_franka)
+        self.thread_cartesian = threading.Thread(target=self.run_cartesian)
+
+        self.thread_franka.start()
+        self.thread_cartesian.start()
+
+        self.franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
+        self.cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+
+        rospy.on_shutdown(self.shutdown)
+
 
     def conveyor_speed_callback(self, msg):
         self.drif_speed = msg.data
@@ -39,7 +50,7 @@ class TaskPlanner:
             response = get_rgbd_frames()
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("RGB and Depth pair received. Ready For Classification and Grasp Generation")
                 return response.rgb_image, response.depth_image, response.timestamp
             else:
@@ -65,7 +76,7 @@ class TaskPlanner:
             response = run_antipodal_network(request)
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Antipodal inference completed successfully. Ready to receive bounding boxes.")
                 return response.infer_success
             else:
@@ -90,7 +101,7 @@ class TaskPlanner:
             response = get_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 6) by manipualtor node
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Grasp Selection completed successfully. Ready to execute grasps.")
                 return response.grasps
             else:
@@ -122,7 +133,7 @@ class TaskPlanner:
             response = get_suction_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 4) by manipualtor node
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Suction Grasp generation completed successfully. Ready to execute grasps.")
                 return response.grasps
             else:
@@ -147,7 +158,7 @@ class TaskPlanner:
             response = get_bboxes(request)
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Classification completed successfully. Ready to call grasp selection service using bboxes.")
                 return response.bbs
             else:
@@ -180,7 +191,7 @@ class TaskPlanner:
                 (self.call_classification_service, rgb_image),
                 (self.call_grasp_inference_service, depth_image, rgb_image)
             ]
-            results = self.run_parallel_tasks(tasks, self.executor_franka)
+            results = self.run_parallel_tasks(tasks, self.executor)
 
             # Handle classification results
             bboxes = results[0] if results[0] else None
@@ -247,13 +258,19 @@ class TaskPlanner:
         # The current grasps are computed at the object, so they need a little offset to not collide with the object.
         self.call_cartesian_robot_service(suction_grasps)
 
+    def shutdown(self):
+        rospy.loginfo("Shutting down task planner")
+        rospy.loginfo("Shutting down executor")
+        self.executor.shutdown(wait=True)
+
 
     def run(self):
         try:
             rospy.spin()
         except rospy.ROSInterruptException:
+            rospy.loginfo("Shutting down task planner")
             rospy.loginfo("Shutting down executor")
-            self.executor_franka.shutdown(wait=True)
+            
 
 if __name__ == '__main__':
     TaskPlanner().run()
