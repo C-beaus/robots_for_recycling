@@ -2,4 +2,4 @@
 sensor_msgs/Image rgb_image
 ---
 # Response
-std_msgs/Float64MultiArray bbs # Falttened bounding boxes
+std_msgs/Float64MultiArray bbs # Flattened bounding boxes

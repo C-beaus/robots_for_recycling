@@ -11,6 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pyrealsense2 as rs
+from cv_bridge import CvBridge
 
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
@@ -134,7 +135,8 @@ class ClassifyServer:
         #     sys.exit(1)
             # break
 
-        rgb_frame = req.rgb_image
+        ros_img_msg = req.rgb_image
+        rgb_frame = self.bridge.imgmsg_to_cv2(ros_img_msg, desired_encoding="rgb8")
 
         # Convert frame to RGB and PIL Image
         # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
