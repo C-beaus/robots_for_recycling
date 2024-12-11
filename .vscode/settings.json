@@ -4,6 +4,9 @@
     ],
     "python.analysis.extraPaths": [
         "/opt/ros/noetic/lib/python3/dist-packages",
-        "./franka/franka_panda_hw/panda_hw/src"
+        "./franka/franka_panda_hw/panda_hw/src",
+        "./franka",
+        "./franka",
+        "./src"
     ]
 }

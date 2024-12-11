@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import EndEffector
-import Manipulator
-from franka.franka_panda_hw.panda_hw.src.panda_control import PandaControl
+import sys
+import os
 
+from EndEffector import EndEffector
+from Manipulator import Manipulator
+from panda_hw.src.panda_control import PandaControl
 class PandaEndEffector(EndEffector):
     def __init__(self, panda_manipulator:PandaControl):
         self.manipulator = panda_manipulator
