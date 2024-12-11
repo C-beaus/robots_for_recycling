@@ -4,10 +4,18 @@ import sys
 import numpy as np
 from math import pi, cos, sin
 import copy
+# import moveit_commander.roscpp_initializer
+# from moveit_commander.roscpp_initializer import roscpp_initialize
 import rospy
 import moveit_commander
 import tf.transformations as tr
 import geometry_msgs.msg
+from geometry_msgs.msg import Pose
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+package_path = os.path.join(script_dir, "src")
+print(package_path)
 
 # Set constants for gripper
 OPEN = 0.08
@@ -16,22 +24,34 @@ CLOSE = 0.0302
 
 class PandaControl():
     def __init__(self) -> None:
+        # roscpp_initialize(sys.argv)
+        # moveit_commander.roscpp_initializer(sys.argv)
+        # rospy.init_node('panda_traj_node',
+        #                 anonymous=True)
+        # moveit_commander.
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_traj_node',
-                        anonymous=True)
+        # rospy.init_node('panda_traj_node',
+        #                 anonymous=True)
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
         self.moveGroup = moveit_commander.MoveGroupCommander("panda_arm")
         self.moveGroup.allow_replanning(True)
         self.moveGroup.set_planning_time(30.0)
         self.moveGroup.set_num_planning_attempts(20)
+        self.gripper = moveit_commander.MoveGroupCommander("panda_hand") 
+        self.gripper.set_planning_time(10.0)
         
         self.scene.remove_world_object()
-        self.add_table()  # Add Table in the workspace
-        self.add_vbar()   # Add vertical steel bar in the workspace
-        self.add_hbar()   # Add horizontal steel bar in the workspace
-        self.add_camera() # Add camera in the workspace
+        self.add_coveyor()
+        self.add_vbar()
+        self.add_hbar()
+        self.add_camera()
+        self.add_back_wall()
+        self.add_side_wall1()
+        self.add_side_wall2()
         self.set_def_pos() # Move the robot to home configuartion
+        self.set_gripper_distance(0.00)
+        print("here")
 
     def move_joint(self, goalConf):
         # Move the robot on the basis of joint values entered
@@ -115,36 +135,40 @@ class PandaControl():
     def tf_cam_to_panda(self, pos):
         # Transforms coordiantes from camera frame to panda frame
 
-        xRot = np.array([[1, 0, 0, 0],
-                        [0, cos(pi), -sin(pi), 0],
-                        [0, sin(pi), cos(pi), 0],
-                        [0, 0, 0, 1]])
+        # xRot = np.array([[1, 0, 0, 0],
+        #                 [0, cos(pi), -sin(pi), 0],
+        #                 [0, sin(pi), cos(pi), 0],
+        #                 [0, 0, 0, 1]])
 
-        zRot = np.array([[cos(-pi/2), -sin(-pi/2), 0, 0],
-                        [sin(-pi/2), cos(-pi/2), 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
+        # zRot = np.array([[cos(-pi/2), -sin(-pi/2), 0, 0],
+        #                 [sin(-pi/2), cos(-pi/2), 0, 0],
+        #                 [0, 0, 1, 0],
+        #                 [0, 0, 0, 1]])
         
-        T = np.array([[1, 0, 0, 0.465],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0.75],
-                    [0, 0, 0, 1]])
+        # T = np.array([[1, 0, 0, 0.465],
+        #             [0, 1, 0, 0],
+        #             [0, 0, 1, 0.75],
+        #             [0, 0, 0, 1]])
 
-        p = np.array([pos[0], pos[1], pos[2], 1]).T
-        posPanda = T.dot(xRot).dot(zRot).dot(p)
-        return posPanda
+
+        p = np.array([pos[0], pos[1], pos[2], 1])
+
+        T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
+
+        goal_pos = T@p
+        # posPanda = T.dot(xRot).dot(zRot).dot(p)
+        return goal_pos
     
+    def add_coveyor(self, timeout=4):
 
-    def add_table(self, timeout=4):
-        
         scene = self.scene
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
-        box_pose.pose.position.x = 0.515
+        box_pose.pose.position.x = 0.535
         box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.15
-        box_name = "table"
-        scene.add_box(box_name, box_pose, size=(0.76, 1.52, 0.02))
+        box_pose.pose.position.z = 0.045
+        box_name = "coveyor"
+        scene.add_box(box_name, box_pose, size=(0.85, 1.80, 0.09))
         
         return True
 
@@ -154,11 +178,11 @@ class PandaControl():
         scene = self.scene
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
-        box_pose.pose.position.x = 0.915
+        box_pose.pose.position.x = 0.889
         box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.485
+        box_pose.pose.position.z = 0.51
         box_name = "vbar"
-        scene.add_box(box_name, box_pose, size=(0.04, 0.04, 0.69))
+        scene.add_box(box_name, box_pose, size=(0.04, 0.04, 0.84))
 
         return True
     
@@ -168,11 +192,11 @@ class PandaControl():
         scene = self.scene
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
-        box_pose.pose.position.x = 0.62
+        box_pose.pose.position.x = 0.615
         box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.815
+        box_pose.pose.position.z = 0.94
         box_name = "hbar"
-        scene.add_box(box_name, box_pose, size=(0.55, 0.03, 0.03))
+        scene.add_box(box_name, box_pose, size=(0.55, 0.04, 0.04))
 
         return True
 
@@ -182,11 +206,73 @@ class PandaControl():
         scene = self.scene
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
-        box_pose.pose.position.x = 0.4725
+        box_pose.pose.position.x = 0.505
         box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.7775
+        box_pose.pose.position.z = 0.905
         box_name = "camera"
-        scene.add_box(box_name, box_pose, size=(0.045, 0.095, 0.050))
+        scene.add_box(box_name, box_pose, size=(0.095, 0.078, 0.050))
+
+        return True
+    
+    def add_back_wall(self, timeout=4):
+
+        scene = self.scene
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
+        box_pose.pose.position.x = -0.950
+        box_pose.pose.position.y = 0
+        box_pose.pose.position.z = 0.5
+        box_name = "back_wall"
+        scene.add_box(box_name, box_pose, size=(0.05, 2.0, 1.0))
+
+        return True
+    
+    def add_side_wall1(self, timeout=4):
+
+        scene = self.scene
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
+        box_pose.pose.position.x = 0.535
+        box_pose.pose.position.y = 0.83
+        box_pose.pose.position.z = 0.5
+        box_name = "side_wall1"   # Another Conveyor Belt
+        scene.add_box(box_name, box_pose, size=(1.0, 0.05, 1.0))
+
+        return True
+    
+    def add_side_wall2(self, timeout=4):
+
+        scene = self.scene
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
+        box_pose.pose.position.x = 0.535
+        box_pose.pose.position.y = -0.63
+        box_pose.pose.position.z = 0.5
+        box_name = "side_wall2"   # Towards the pick robot
+        scene.add_box(box_name, box_pose, size=(1.0, 0.05, 1.0))
+
+        return True
+    
+    
+    def add_object(self, timeout=4):
+
+        scene = self.scene
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = self.moveGroup.get_pose_reference_frame()
+        box_pose.pose.position.x = 0.515
+        box_pose.pose.position.y = 0.0
+        box_pose.pose.position.z = 0.16 + (0.042/2)
+        box_name = "block"
+        scene.add_box(box_name, box_pose, size=(0.062, 0.03, 0.042))
+
+        return True
+
+
+    def set_gripper_distance(self, target_distance):
+
+        joint_value = target_distance / 2  # For symmetric grippers, each finger moves half the distance
+        self.gripper.set_joint_value_target([joint_value, joint_value])  # Set both finger joints
+        self.gripper.go(wait=True)
 
         return True
     
@@ -206,19 +292,22 @@ class PandaControl():
     def openGripper(self):
         self.set_gripper_distance(OPEN)
 
+    
+
 
 def default_test():
     pandaController = PandaControl()
 
-    loaded = np.array([0.2, 0.3, 0.4])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
-    start = pandaController.tf_cam_to_panda([loaded[0], loaded[1], loaded[2]])[:-1]   # Convert coordinates to Panda Frame
+    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
+    start = pandaController.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
     
     print("Moving to Start location")
     pandaController.execute_traj_start(start)    # Move the robot to given location
 
-    print("Moving to Home location")
-    pandaController.set_def_pos()   # Move the robot to home configuartion
-    pandaController.scene.remove_world_object()   # Remove all the objects from the scene
+    # print("Moving to Home location")
+    # pandaController.set_def_pos()   # Move the robot to home configuartion
+    # pandaController.scene.remove_world_object()   # Remove all the objects from the scene
+
 
 
 if __name__ == "__main__":
