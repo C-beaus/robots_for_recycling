@@ -62,6 +62,7 @@ find_package(catkin REQUIRED COMPONENTS
    GraspSrv.srv
    CameraSrv.srv
    rgbdSrv.srv
+   SuctionSrv.srv
  )
 
 ## Generate actions in the 'action' folder
