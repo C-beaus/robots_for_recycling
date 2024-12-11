@@ -63,7 +63,7 @@ class ClassifyServer:
         # if issues: make sure you have the full folder open so that relative filepaths work 
         current_dir = os.getcwd()
         print(current_dir)
-        current_dir = os.path.join(current_dir, "src/robots_for_recycling")
+        current_dir = os.path.join(current_dir, "robots_for_recycling")
         self.model_name = os.path.join(current_dir, 'models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth')
         self.confidence_threshold = 0.7
 
@@ -169,7 +169,7 @@ class ClassifyServer:
         yolo_v5_array = np.array(yolo_v5_array, dtype=np.float64).flatten()
 
         response = ClassifySrvResponse()
-        response.bbs = yolo_v5_array
+        response.bbs.data = yolo_v5_array
         rospy.loginfo(f'Sending bounding boxes {response.bbs}')
 
         self.logger.info("Real-time detection ended.")

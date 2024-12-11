@@ -14,6 +14,7 @@ class SuctionGenerator:
         self.belt_depth = belt_depth # this is in the camera frame
         self.belt_points_margin = 0.02
         self.thin_thresold = 0.05 # Consider object thin if surface is only 0.05 cm above belt surface
+        self.belt_z = 0.804 # Should actually measure this tho
     
     def remove_belt_points(self, depth):
 
@@ -195,11 +196,11 @@ class SuctionGenerator:
             crop_cy = 231.57203674316406 - bb_top_left_row
 
             # Filter depth map to remove belt points
-            self.remove_belt_points()
+            self.remove_belt_points(depth)
 
             intrinsics = o3d.camera.PinholeCameraIntrinsic()
             intrinsics.set_intrinsics(width=depth_crop.shape[1], height=depth_crop.shape[0], fx=605.622314453125, fy=605.8401489257812, cx=crop_cx, cy=crop_cy)
-            
+            depth = depth.astype(np.float32)
             bbox_pcd = o3d.geometry.PointCloud.create_from_depth_image(
                                 depth=o3d.geometry.Image(depth),
                                 intrinsic=intrinsics,
@@ -221,7 +222,7 @@ class SuctionGenerator:
             triangle_vertices = np.array([[2.5, 4], [2.5, -4], [-4, 0]])/100
             suction_radius = 1.25/100  # in meters
 
-            occupancy_grid, min_x, min_y = self.generate_occupancy_grid(flat_points)
+            occupancy_grid, min_x, min_y = self.generate_occupancy_grid(np.asarray(flat_points.points))
             # self.plot_grid(occupancy_grid)
             occupancy_grid = cv2.erode(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)
             occupancy_grid = cv2.dilate(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)

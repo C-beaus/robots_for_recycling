@@ -76,6 +76,7 @@ class TaskPlanner:
             # Call the service
             rospy.loginfo("Calling the antipodal model service to run inference on current frames...")
             response = run_antipodal_network(request)
+            rospy.loginfo(f"response info: {response}")
 
             # Check and handle the response
             if response:
@@ -96,7 +97,7 @@ class TaskPlanner:
 
             get_grasps = rospy.ServiceProxy('select_grasps_from_bbs', GraspSrv)
             request = GraspSrvRequest()
-            request.bbs = bboxes
+            request.bbs.data = bboxes
             
             # Call the service
             rospy.loginfo("Calling the antipodal grasp generation service to select grasps within given bounding boxes...")
@@ -105,7 +106,7 @@ class TaskPlanner:
             # Check and handle the response
             if response:
                 rospy.loginfo("Grasp Selection completed successfully. Ready to execute grasps.")
-                return response.grasps
+                return response.grasps.data
             else:
                 rospy.logwarn("Grasp Selection did not succeed.")
                 return None
@@ -122,12 +123,12 @@ class TaskPlanner:
     def call_suction_grasp_service(self, depth_image, bboxes):
         
         # Wait for the service to become available
-        rospy.wait_for_service('suction_planner_service')
+        rospy.wait_for_service('get_sucked')
         try:
 
-            get_suction_grasps = rospy.ServiceProxy('suction_planner_service', SuctionSrv)
+            get_suction_grasps = rospy.ServiceProxy('get_sucked', SuctionSrv)
             request = SuctionSrvRequest()
-            request.bbs = bboxes
+            request.bbs.data = bboxes
             request.depth_image = depth_image
             
             # Call the service
@@ -137,7 +138,7 @@ class TaskPlanner:
             # Check and handle the response
             if response:
                 rospy.loginfo("Suction Grasp generation completed successfully. Ready to execute grasps.")
-                return response.grasps
+                return response.grasps.data
             else:
                 rospy.logwarn("Grasp generation did not succeed.")
                 return None
@@ -162,7 +163,7 @@ class TaskPlanner:
             # Check and handle the response
             if response:
                 rospy.loginfo("Classification completed successfully. Ready to call grasp selection service using bboxes.")
-                return response.bbs
+                return response.bbs.data
             else:
                 rospy.logwarn("Classification did not succeed.")
                 return None
@@ -242,9 +243,11 @@ class TaskPlanner:
                 rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
                 return
 
+            print("here")
             suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
                                                                                 # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
 
+            print("suction grasps collected")
             # Handle suciton grasp results
             if not suction_grasps:
                 rospy.logwarn("Suction grasps not found. Exiting run_cartesian function.")
@@ -268,6 +271,8 @@ class TaskPlanner:
 
     def run(self):
         try:
+            # spinner = rospy.AsyncSpinner(2) # pass in number of threads
+            # spinner.start()
             rospy.spin()
         except rospy.ROSInterruptException:
             rospy.loginfo("Shutting down task planner")

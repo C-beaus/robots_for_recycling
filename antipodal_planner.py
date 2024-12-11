@@ -41,6 +41,12 @@ class AntipodalPlanner:
         rospy.loginfo(f'Grasp Node Ready.')
 
         self.bridge = CvBridge()
+        self.depth_img = None
+        self.color_img = None
+        self.q_img = None
+        self.ang_img = None
+        self.width_img = None
+
 
     def run_grasp_inference(self, req):
         self.depth_img = np.copy(self.bridge.imgmsg_to_cv2(req.depth_image, desired_encoding="passthrough"))
@@ -57,8 +63,8 @@ class AntipodalPlanner:
 
     def generatePose(self):
 
-        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_image, 
-                                                bboxes=self.bboxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
+        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
+                                                bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
                                                 fx=605.622314453125, fy=605.8401489257812)
         grasp_poses = np.array(grasp_poses, dtype=np.float64)
         flattened_grasp_poses = grasp_poses.flatten()
@@ -69,14 +75,14 @@ class AntipodalPlanner:
 
     def select_bbs_grasps(self, req):
 
-        boxes_array = np.array(req.bbs, dtype=np.float64)
+        boxes_array = np.array(req.bbs.data, dtype=np.float64)
         self.boxes = boxes_array.reshape(-1, 5)
         rospy.loginfo(f'Received bounding boxes {self.boxes}')
 
         # Generate the pose with the bounding boxes
         flattened_grasp_poses = self.generatePose()
         response = GraspSrvResponse()
-        response.grasps = flattened_grasp_poses
+        response.grasps.data = flattened_grasp_poses
         
         return response
 
