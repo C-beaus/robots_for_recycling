@@ -252,26 +252,29 @@ def fin_ray_pick_node(grip_location):
     print("Gantry to Home")
     ex.callbackHome() #necessary!
     #finray.pick(False)   # open the fin ray gripper
+
+    ex.setZposition(0)
     finray.release()   # open the fin ray gripper
 
-    # rospy.sleep(3) #should not be needed
+    rospy.sleep(3) #should not be needed
     ex.setXposition(grip_location[0])         # X position of Gantry
     # rospy.sleep(3)  #should not be needed anymore
     ex.setZposition(grip_location[2])          # Z position of Gantry 5
-    rospy.sleep(5)
-    #finray.pick(True)    # close the fin ray gripper
+    rospy.sleep(6.5)
+    #finray.pick(True)    # cose the fin ray gripper
     finray.pick()    # close the fin ray gripper
-
     rospy.sleep(3)
+    #rospy.sleep(4)
     ex.setZposition(1)
-    rospy.sleep(2)
+    rospy.sleep(3)
     ex.setXposition(2) 
-    rospy.sleep(2)
+    #rospy.sleep(2)
+    rospy.sleep(3)
     finray.release()
-    rospy.sleep(2)
+    #rospy.sleep(2)
     #ex.pneumatic_gripper(False)
     print("Done fin_ray_pick_node")
-    rospy.sleep(3)
+    #rospy.sleep(3)
 
 #def pick_node(grip_location):
 #    '''
@@ -466,7 +469,7 @@ def test_conveyors():   # Need to test if this changes speed of conveyors
     
 
 def main():
-    grasp_location = [32, 1, 4.5, 3, 4, 5]
+    grasp_location = [32, 0, 5.1, 3, 4, 5]
     fin_ray_pick_node(grasp_location)
     # exp_node()
     #test_depth() # dont go past 8
