@@ -8,6 +8,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 
 
@@ -19,9 +20,21 @@ class TaskPlanner:
 
         self.drift_speed = 0
         self.executor = ThreadPoolExecutor()
-        self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
-        franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
-        cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+
+        self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
+
+        self.thread_franka = threading.Thread(target=self.run_franka)
+        self.thread_cartesian = threading.Thread(target=self.run_cartesian)
+
+        self.thread_franka.start()
+        self.thread_cartesian.start()
+
+        self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+        rospy.sleep(0.5)
+        self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+
+        rospy.on_shutdown(self.shutdown)
+
 
     def conveyor_speed_callback(self, msg):
         self.drif_speed = msg.data
@@ -247,13 +260,18 @@ class TaskPlanner:
         # The current grasps are computed at the object, so they need a little offset to not collide with the object.
         self.call_cartesian_robot_service(suction_grasps)
 
+    def shutdown(self):
+        rospy.loginfo("Shutting down task planner")
+        rospy.loginfo("Shutting down executor")
+        self.executor.shutdown(wait=True)
+
 
     def run(self):
         try:
             rospy.spin()
         except rospy.ROSInterruptException:
+            rospy.loginfo("Shutting down task planner")
             rospy.loginfo("Shutting down executor")
-            self.executor.shutdown(wait=True)
 
 if __name__ == '__main__':
     TaskPlanner().run()
