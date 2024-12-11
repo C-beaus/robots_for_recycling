@@ -62,6 +62,7 @@ find_package(catkin REQUIRED COMPONENTS
    GraspSrv.srv
    CameraSrv.srv
    rgbdSrv.srv
+   SuctionSrv.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -169,6 +170,7 @@ catkin_install_python(PROGRAMS
   classify_server.py
   antipodal_planner.py
   camera_node.py
+  suction_planner.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

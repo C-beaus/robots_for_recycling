@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import rospkg
 script_dir = os.path.dirname(os.path.abspath(__file__))
 package_path = os.path.join(script_dir, "antipodal_grasp_network")
 if package_path not in sys.path:
@@ -11,6 +12,7 @@ from run_grasp_generator_modified import run_inference
 from inference.grasp_generator_modified import GraspGenerator
 import numpy as np
 from robots_for_recycling.srv import GraspSrv, rgbdSrv, GraspSrvResponse, rgbdSrvResponse
+from cv_bridge import CvBridge
 
 """
 This class handles translating bounding boxes for use by the manipulation team
@@ -28,31 +30,41 @@ class AntipodalPlanner:
         self.grasp_selection_service = rospy.Service('select_grasps_from_bbs', GraspSrv, self.select_bbs_grasps)
 
         # Create subscriber
-        current_dir = os.getcwd()
+        rospack = rospkg.RosPack()
+        current_dir = rospack.get_path("robots_for_recycling")
+
         print(current_dir)
-        current_dir = os.path.join(current_dir, "catkin_ws/src/robots_for_recycling") ## b/c catkin workspace is current working directory, append this to front of relative path
 
         self.model_path = os.path.join(current_dir, 'antipodal_grasp_network/trained-models/cornell-randsplit-rgbd-grconvnet3-drop1-ch16/epoch_17_iou_0.96')
         self.generator = GraspGenerator(saved_model_path=self.model_path)
         self.generator.load_model()
         rospy.loginfo(f'Grasp Node Ready.')
 
+        self.bridge = CvBridge()
+        self.depth_img = None
+        self.color_img = None
+        self.q_img = None
+        self.ang_img = None
+        self.width_img = None
+
+
     def run_grasp_inference(self, req):
-        self.depth_img = req.depth_image
-        self.color_img = req.rgb_image
+        self.depth_img = np.copy(self.bridge.imgmsg_to_cv2(req.depth_image, desired_encoding="passthrough"))
+        self.color_img = np.copy(self.bridge.imgmsg_to_cv2(req.rgb_image, desired_encoding="rgb8"))
         self.q_img, self.ang_img, self.width_img = run_inference(generator=self.generator, color_image=self.color_img, depth_image=self.depth_img, use_cam=False)
         
-        if self.q_img and self.ang_img and self.width_img:
+        if self.q_img.size > 0 and self.ang_img.size > 0 and self.width_img.size > 0:
             response = rgbdSrvResponse()
             response.infer_success = True
             return response
 
 
 
+
     def generatePose(self):
 
-        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_image, 
-                                                bboxes=self.bboxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
+        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
+                                                bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
                                                 fx=605.622314453125, fy=605.8401489257812)
         grasp_poses = np.array(grasp_poses, dtype=np.float64)
         flattened_grasp_poses = grasp_poses.flatten()
@@ -63,14 +75,14 @@ class AntipodalPlanner:
 
     def select_bbs_grasps(self, req):
 
-        boxes_array = np.array(req.bbs, dtype=np.float64)
+        boxes_array = np.array(req.bbs.data, dtype=np.float64)
         self.boxes = boxes_array.reshape(-1, 5)
         rospy.loginfo(f'Received bounding boxes {self.boxes}')
 
         # Generate the pose with the bounding boxes
         flattened_grasp_poses = self.generatePose()
         response = GraspSrvResponse()
-        response.grasps = flattened_grasp_poses
+        response.grasps.data = flattened_grasp_poses
         
         return response
 

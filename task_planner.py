@@ -8,6 +8,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 
 
@@ -18,15 +19,26 @@ class TaskPlanner:
         rospy.loginfo("Recycle Node Ready")
 
         self.drift_speed = 0
-        self.executor_franka = ThreadPoolExecutor()
+        self.executor = ThreadPoolExecutor()
 
         if calibrate_bool:
-            self.calibrate_franka = rospy.Subscriber("/calibrate", Float64, self.calibrate_franka)
-        else:
-            self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
-            franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
-            cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+        self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
 
+        # self.thread_franka = threading.Thread(target=self.run_franka)
+        # self.thread_cartesian = threading.Thread(target=self.run_cartesian)
+
+        # self.thread_franka.start()
+        # self.thread_cartesian.start()
+
+        self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+        rospy.sleep(0.5)
+        self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+
+        rospy.on_shutdown(self.shutdown)
+        else:
+          self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
+          franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
+          cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
 
     def conveyor_speed_callback(self, msg):
         self.drif_speed = msg.data
@@ -44,7 +56,7 @@ class TaskPlanner:
             response = get_rgbd_frames()
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("RGB and Depth pair received. Ready For Classification and Grasp Generation")
                 return response.rgb_image, response.depth_image, response.timestamp
             else:
@@ -68,9 +80,10 @@ class TaskPlanner:
             # Call the service
             rospy.loginfo("Calling the antipodal model service to run inference on current frames...")
             response = run_antipodal_network(request)
+            rospy.loginfo(f"response info: {response}")
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Antipodal inference completed successfully. Ready to receive bounding boxes.")
                 return response.infer_success
             else:
@@ -88,16 +101,16 @@ class TaskPlanner:
 
             get_grasps = rospy.ServiceProxy('select_grasps_from_bbs', GraspSrv)
             request = GraspSrvRequest()
-            request.bbs = bboxes
+            request.bbs.data = bboxes
             
             # Call the service
             rospy.loginfo("Calling the antipodal grasp generation service to select grasps within given bounding boxes...")
             response = get_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 6) by manipualtor node
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Grasp Selection completed successfully. Ready to execute grasps.")
-                return response.grasps
+                return response.grasps.data
             else:
                 rospy.logwarn("Grasp Selection did not succeed.")
                 return None
@@ -114,12 +127,12 @@ class TaskPlanner:
     def call_suction_grasp_service(self, depth_image, bboxes):
         
         # Wait for the service to become available
-        rospy.wait_for_service('suction_planner_service')
+        rospy.wait_for_service('get_sucked')
         try:
 
-            get_suction_grasps = rospy.ServiceProxy('suction_planner_service', SuctionSrv)
+            get_suction_grasps = rospy.ServiceProxy('get_sucked', SuctionSrv)
             request = SuctionSrvRequest()
-            request.bbs = bboxes
+            request.bbs.data = bboxes
             request.depth_image = depth_image
             
             # Call the service
@@ -127,9 +140,9 @@ class TaskPlanner:
             response = get_suction_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 4) by manipualtor node
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Suction Grasp generation completed successfully. Ready to execute grasps.")
-                return response.grasps
+                return response.grasps.data
             else:
                 rospy.logwarn("Grasp generation did not succeed.")
                 return None
@@ -152,9 +165,9 @@ class TaskPlanner:
             response = get_bboxes(request)
 
             # Check and handle the response
-            if response.success:
+            if response:
                 rospy.loginfo("Classification completed successfully. Ready to call grasp selection service using bboxes.")
-                return response.bbs
+                return response.bbs.data
             else:
                 rospy.logwarn("Classification did not succeed.")
                 return None
@@ -260,7 +273,7 @@ class TaskPlanner:
                 (self.call_classification_service, rgb_image),
                 (self.call_grasp_inference_service, depth_image, rgb_image)
             ]
-            results = self.run_parallel_tasks(tasks, self.executor_franka)
+            results = self.run_parallel_tasks(tasks, self.executor)
 
             # Handle classification results
             bboxes = results[0] if results[0] else None
@@ -309,9 +322,11 @@ class TaskPlanner:
                 rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
                 return
 
+            print("here")
             suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
                                                                                 # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
 
+            print("suction grasps collected")
             # Handle suciton grasp results
             if not suction_grasps:
                 rospy.logwarn("Suction grasps not found. Exiting run_cartesian function.")
@@ -327,13 +342,20 @@ class TaskPlanner:
         # The current grasps are computed at the object, so they need a little offset to not collide with the object.
         self.call_cartesian_robot_service(suction_grasps)
 
+    def shutdown(self):
+        rospy.loginfo("Shutting down task planner")
+        rospy.loginfo("Shutting down executor")
+        self.executor.shutdown(wait=True)
+
 
     def run(self):
         try:
+            # spinner = rospy.AsyncSpinner(2) # pass in number of threads
+            # spinner.start()
             rospy.spin()
         except rospy.ROSInterruptException:
+            rospy.loginfo("Shutting down task planner")
             rospy.loginfo("Shutting down executor")
-            self.executor_franka.shutdown(wait=True)
 
 if __name__ == '__main__':
 

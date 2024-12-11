@@ -55,7 +55,7 @@ class RealSenseService:
                 # Get aligned frames
                 aligned_depth_frame = aligned_frames.get_depth_frame()
                 color_frame = aligned_frames.get_color_frame()
-                capture_time = rospy.Time.now()
+                capture_time = rospy.Time.now().secs
 
                 if aligned_depth_frame and color_frame:
 
@@ -70,8 +70,8 @@ class RealSenseService:
                     response = CameraSrvResponse()
                     response.rgb_image = color_image
                     response.depth_image = depth_image
-                    response.timestamp = capture_time
-                    rospy.loginfo(f"RGB and Depth pair collected at time stamp: {response.timestamp.to_sec()}")
+                    response.timestamp.data = capture_time
+                    rospy.loginfo(f"RGB and Depth pair collected at time stamp: {response.timestamp}")
 
                     return response
 
