@@ -23,11 +23,11 @@ class TaskPlanner:
 
         self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
 
-        self.thread_franka = threading.Thread(target=self.run_franka)
-        self.thread_cartesian = threading.Thread(target=self.run_cartesian)
+        # self.thread_franka = threading.Thread(target=self.run_franka)
+        # self.thread_cartesian = threading.Thread(target=self.run_cartesian)
 
-        self.thread_franka.start()
-        self.thread_cartesian.start()
+        # self.thread_franka.start()
+        # self.thread_cartesian.start()
 
         self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
         rospy.sleep(0.5)
