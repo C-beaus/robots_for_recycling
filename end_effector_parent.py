@@ -40,10 +40,10 @@ import os
 import rospy
 import serial
 import time
-from dynamixel_sdk import *
-from dynamixel_sdk_examples.srv import * 
-from dynamixel_sdk_examples.msg import *
-from tool_dynamixel import DynamixelMotor
+#from dynamixel_sdk import *
+#from dynamixel_sdk_examples.srv import * 
+#from dynamixel_sdk_examples.msg import *
+#from tool_dynamixel import DynamixelMotor
 from std_msgs.msg import Float64, String, Int32, Bool, Float32  
 # from end_effector.msg import GripperToggle, GripperState
 

@@ -7,27 +7,21 @@
 # In the Conveyor Belt GUI, in Gantry Controls section, press HOME button. (If this is not done, then the code will not execute)
 # Terminal 3: cd RoboticRecycling2023/RBE595/   --> source devel/setup.bash   --> rosrun robots_recycling control_example.py
 # If you are doing any chnages then remeber to do 'catkin_make' then 'source devel/setup.bash'
-
+import sys
 import os
 import rospy
 import serial
 import time
-#Should name the folder that the functions you're trying to call are in?
-script_dir = os.path.dirname(os.path.abspath(__file__))
-package_path = os.path.join(script_dir, "src")
-print(package_path)
-#package_path = home/merlab/RoboticRecycling2023/RBE595/src/robot_recycling/src
-#package_path = os.path.join("src", "src")
-if package_path not in sys.path:
-    sys.path.append(package_path)
+sys.path.append('/home/merl/RoboticRecycling2023/RBE595/src/robots_recycling/src/')
 
-from dynamixel_sdk import *
-from dynamixel_sdk_examples.srv import * 
-from dynamixel_sdk_examples.msg import *
-from tool_dynamixel import DynamixelMotor
+#from dynamixel_sdk import *
+#from dynamixel_sdk_examples.srv import * 
+#from dynamixel_sdk_examples.msg import *
+#from tool_dynamixel import DynamixelMotor
 from std_msgs.msg import Float64, String, Int32, Bool, Float32
 # from end_effector.msg import GripperToggle, GripperState
 from end_effector_parent import EndEffector
+#from FinRayGripperControllerChild import *
 
 class FinRayGripperControllerChild(EndEffector):
     def __init__(self):#, offset):#, startPos):
