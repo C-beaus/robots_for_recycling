@@ -23,6 +23,7 @@ class SuctionGenerator:
         else:
             # considering z-axis of camera is pointing down
             depth = np.where(depth <= self.belt_z - self.belt_points_margin, depth, 0)
+            return depth
 
 
     def generate_occupancy_grid(self, flat_3D_points):
@@ -178,7 +179,14 @@ class SuctionGenerator:
 
     def generate_suction(self, depth, bboxes, z_component_threshold):
         
+        depth = depth.astype(np.float32)
+        # Filter depth map to remove belt points
+        depth = self.remove_belt_points(depth)
+        # normal_depth = cv2.normalize(depth, 0, 255)
         points = []
+        # cv2.imshow('window',normal_depth)
+        # cv2.waitKey(0)
+        # print(depth.shape)
 
         for bbox in bboxes:
 
@@ -189,25 +197,31 @@ class SuctionGenerator:
             bb_top_left_col = int(x_center - width/2)
             bb_bottom_right_col = int(x_center + width/2)
 
-            depth_crop = depth[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col]
+            # cv2.rectangle(normal_depth, (bb_top_left_col, bb_top_left_row), (bb_bottom_right_col, bb_bottom_right_row), (0, 255, 0), 2)
+            # cv2.imshow('window', normal_depth)
+            # cv2.waitKey(0)
 
-            # calculate principal point with respect to crop
+            depth_crop = depth[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col]
+            # cv2.imshow('window', depth_crop)
+            # cv2.waitKey(0)
+            # print(depth_crop)
+
+            # # calculate principal point with respect to crop
             crop_cx = 321.1669921875 - bb_top_left_col
             crop_cy = 231.57203674316406 - bb_top_left_row
 
-            # Filter depth map to remove belt points
-            self.remove_belt_points(depth)
-
             intrinsics = o3d.camera.PinholeCameraIntrinsic()
-            intrinsics.set_intrinsics(width=depth_crop.shape[1], height=depth_crop.shape[0], fx=605.622314453125, fy=605.8401489257812, cx=crop_cx, cy=crop_cy)
-            depth = depth.astype(np.float32)
+            intrinsics.set_intrinsics(width=depth_crop.shape[1], height=depth_crop.shape[0], fx=605.622314453125, fy=605.8401489257812, cx=321.1669921875, cy=231.57203674316406)
+            
             bbox_pcd = o3d.geometry.PointCloud.create_from_depth_image(
                                 depth=o3d.geometry.Image(depth),
                                 intrinsic=intrinsics,
                                 depth_scale=1.0,
-                                depth_trunc=5.0,  # Maximum depth to consider
+                                depth_trunc=1.5,  # Maximum depth to consider
                                 stride=1  # Use every pixel (adjust for downsampling)
                             )
+            
+            o3d.visualization.draw_geometries([bbox_pcd])
             
             bbox_pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(
                                         radius=0.1,
@@ -223,7 +237,7 @@ class SuctionGenerator:
             suction_radius = 1.25/100  # in meters
 
             occupancy_grid, min_x, min_y = self.generate_occupancy_grid(np.asarray(flat_points.points))
-            # self.plot_grid(occupancy_grid)
+            self.plot_grid(occupancy_grid)
             occupancy_grid = cv2.erode(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)
             occupancy_grid = cv2.dilate(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)
             kernel = self.create_suction_kernel(triangle_vertices, suction_radius, save=False)
@@ -240,16 +254,16 @@ class SuctionGenerator:
                 grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
                 points.append(grasp_point)
 
-                # sphere_radius = 0.005 # meters
-                # mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_radius)
-                # mesh_sphere.paint_uniform_color([0.5, 0, 0.5])
-                # mesh_sphere.translate([point[0], point[1], point[2]])
+                sphere_radius = 0.005 # meters
+                mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_radius)
+                mesh_sphere.paint_uniform_color([0.5, 0, 0.5])
+                mesh_sphere.translate([point[0], point[1], point[2]])
+    
+                temp_pcd = o3d.geometry.PointCloud()
+                temp_pcd.points = o3d.utility.Vector3dVector([point])
 
-                # temp_pcd = o3d.geometry.PointCloud()
-                # temp_pcd.points = o3d.utility.Vector3dVector([point])
+                temp_pcd.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
 
-                # temp_pcd.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
-
-                # o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
+                o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
         
         return np.array(points)

@@ -316,7 +316,7 @@ class TaskPlanner:
 
         # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
         # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-        self.call_franka_robot_service(grasps)
+        # self.call_franka_robot_service(grasps)
 
     
     def run_cartesian(self, event):
@@ -395,6 +395,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    args.calibrate_bool = True
+    # args.calibrate_bool = True
 
     TaskPlanner(args.calibrate_bool).run()
