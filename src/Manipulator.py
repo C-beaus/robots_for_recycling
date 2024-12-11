@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import superclasses.EndEffector as EndEffector
+import EndEffector as EndEffector
 
 
 class Manipulator:

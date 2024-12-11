@@ -101,6 +101,7 @@ class PandaControl():
         wpose.position.x = posStart[0]
         wpose.position.y = posStart[1]
         wpose.position.z = posStart[2]
+        wpose.orientation.w = posStart[3]
         waypoints.append(copy.deepcopy(wpose))
 
         (plan, fraction) = self.moveGroup.compute_cartesian_path(waypoints,0.01, True)  # Generate intermediate waypoints needed for the robot to move to desired location
@@ -189,18 +190,18 @@ class PandaControl():
 
         return True
     
-    def move_to_camera_coordinates(self, x, y, z):
-        xyzArray = np.array([0.2, 0.3, 0.4])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
+    def move_to_camera_coordinates(self, x, y, z, theta):
+        xyzArray = np.array([x, y, z, theta])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
         pandaCoordinateArray = self.tf_cam_to_panda([xyzArray[0], xyzArray[1], xyzArray[2]])[:-1]   # Convert coordinates to Panda Frame
         
-        print("Moving to location: ", round(x,3), ", ", round(y,3), ", ", round(z,3))
-        self.execute_traj_start(pandaCoordinateArray)    # Move the robot to given location
+        print("Moving to location: ", round(x,3), ", ", round(y,3), ", ", round(z,3) + " with orientation: ", round(theta,3))
+        self.execute_traj_start([pandaCoordinateArray, xyzArray[3]])    # Move the robot to given location
         
     def move_to_home(self):
         self.set_def_pos()
         
-    def closeGripper(self):
-        self.set_gripper_distance(CLOSE)
+    def closeGripper(self, width = -1):
+        self.set_gripper_distance(CLOSE if width == -1 else width)
         
     def openGripper(self):
         self.set_gripper_distance(OPEN)

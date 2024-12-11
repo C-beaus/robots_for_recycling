@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from PandaManipulator import PandaManipulator
 import rospy
 from std_msgs.msg import Float64, Float64MultiArray
 import argparse
@@ -35,6 +36,9 @@ class TaskPlanner:
             self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
 
             rospy.on_shutdown(self.shutdown)
+        
+        self.pandaManipulator = PandaManipulator()
+        self.pandaEndEffector = self.pandaManipulator.end_effector
         
 
     def conveyor_speed_callback(self, msg):
@@ -116,7 +120,7 @@ class TaskPlanner:
             rospy.logerr(f"Service call to anipodal grasp selection service failed: {e}")
 
     def call_franka_robot_service(self, grasps):
-        raise NotImplementedError
+        self.pandaManipulator.executeGrasp(grasps)
     
     def call_cartesian_robot_service(self, grasps):
         raise NotImplementedError
