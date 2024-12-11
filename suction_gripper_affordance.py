@@ -183,7 +183,7 @@ class SuctionGenerator:
         
         depth = depth.astype(np.float32)
         # Filter depth map to remove belt points
-        normal_depth = cv2.normalize(depth, 0, 255)
+        # normal_depth = cv2.normalize(depth, 0, 255)
         points = []
         # cv2.imshow('window',normal_depth)
         # cv2.waitKey(0)
@@ -238,19 +238,19 @@ class SuctionGenerator:
             flat_indices = np.where(np.abs(normals[:, 2]) >= z_component_threshold)[0]
             
             flat_pcd = bbox_pcd.select_by_index(flat_indices)
-            o3d.visualization.draw_geometries([flat_pcd])
+            # o3d.visualization.draw_geometries([flat_pcd])
 
             triangle_vertices = np.array([[2.5, 4], [2.5, -4], [-4, 0]])/100
             suction_radius = 1.25/100  # in meters
 
             occupancy_grid, min_x, min_y = self.generate_occupancy_grid(np.asarray(flat_pcd.points))
-            self.plot_grid(occupancy_grid)
-            occupancy_grid = cv2.dilate(occupancy_grid, np.ones((3, 3), np.uint8), iterations=1)
-            self.plot_grid(occupancy_grid)
-            occupancy_grid = cv2.erode(occupancy_grid, np.ones((3, 3), np.uint8), iterations=1)
-            self.plot_grid(occupancy_grid)
+            # self.plot_grid(occupancy_grid)
+            occupancy_grid = cv2.dilate(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)
+            # self.plot_grid(occupancy_grid)
+            # occupancy_grid = cv2.erode(occupancy_grid, np.ones((3, 3), np.uint8), iterations=1)
+            # self.plot_grid(occupancy_grid)
             kernel = self.create_suction_kernel(triangle_vertices, suction_radius, save=False)
-            self.plot_grid(kernel)
+            # self.plot_grid(kernel)
 
             # Choose a valid point closest to bbox center
             point_xy = self.choose_approach_point(occupancy_grid, kernel, min_x, min_y)

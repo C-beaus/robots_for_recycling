@@ -306,7 +306,7 @@ class TaskPlanner:
 
         # Perform grasp selection
         grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
-                                                           # row would then become [x, y, z, angle, witdh, label]
+                                                           # row would then become [x, y, z, angle, width, label]
 
         if grasps:
             rospy.loginfo("Grasps received for given objects.")
@@ -336,7 +336,7 @@ class TaskPlanner:
 
             print("here")
             suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
-                                                                                # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
+                                                                                # grasps.reshape(-1, 4) where each  row would then become [x, y, z, label]
 
             print("suction grasps collected")
             # Handle suciton grasp results
@@ -352,11 +352,9 @@ class TaskPlanner:
 
         # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
         # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-        self.call_cartesian_robot_service(suction_grasps)
+        # self.call_cartesian_robot_service(suction_grasps)
 
     def shutdown(self):
-        rospy.loginfo("Shutting down task planner")
-        rospy.loginfo("Shutting down executor")
         self.executor.shutdown(wait=True)
 
 
