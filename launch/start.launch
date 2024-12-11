@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="robots_for_recycling" type="task_planner.py" name="task_planner"/>
+  <node pkg="robots_for_recycling" type="antipodal_planner.py" name="antipodal_planner"/>
+  <node pkg="robots_for_recycling" type="camera_node.py" name="camera_node"/>
+  <node pkg="robots_for_recycling" type="classify_server.py" name="classify_server"/>
+</launch>

@@ -39,7 +39,8 @@ def capture_frames():
             # Keep looping until valid depth and color frames are received.
             if not color_frame and aligned_depth_frame:
                 continue
-            if i == 10:
+            if i == 10: # Skipping first few frames because they aren't good. Remove this condition when
+                        # the belt is moving or when frames come from task planner or a separate camera node. 
                 depth_image = np.asarray(aligned_depth_frame.get_data(), dtype=np.float32)
                 color_image = np.asanyarray(color_frame.get_data())
                 break
@@ -52,7 +53,7 @@ def capture_frames():
         pipeline.stop()
         return color_image, depth_image, depth_scale
     
-def process_frames(color_image, depth_image, depth_scale):
+def process_frames(color_image, depth_image, depth_scale=1):
 
     depth_image *= depth_scale
     color_image = 255 - color_image
@@ -79,19 +80,17 @@ def find_largest_contour(image):
     return largest_contour
 
 
-def generate_poses(generator=None, bboxes=None, camera2robot=None, color_image=None, depth_image=None, use_cam=True):
+def run_inference(generator=None, color_image=None, depth_image=None, use_cam=False):
 
     # color_image and depth_image obtained from either classification team or collected ourselves
     # Collect own images if classification team did not provide them
     if use_cam:
         color_image, depth_image, depth_scale = capture_frames()
+        color_image, depth_image =  process_frames(color_image, depth_image, depth_scale=depth_scale)
     
-    color_image, depth_image =  process_frames(color_image, depth_image, depth_scale)
+    # Depth scale already multiplied if image came from camera node
+    color_image, depth_image =  process_frames(color_image, depth_image)
+
+    q_img, ang_img, width_img = generator.infer_from_model(depth=depth_image, rgb=color_image)
     
-    # grasp poses is a list of arrays like [np.array([x,y,z,angle, label]), ....]
-    # label of object included with grasp
-    grasp_poses = generator.generate(depth=depth_image, rgb=color_image, bboxes=bboxes, camera2robot=camera2robot, 
-                                             ppx=321.1669921875, ppy=231.57203674316406, fx=605.622314453125, 
-                                             fy=605.8401489257812)
-    
-    return np.array(grasp_poses, dtype=np.float64)
+    return q_img, ang_img, width_img

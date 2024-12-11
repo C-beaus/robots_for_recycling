@@ -73,10 +73,8 @@ class GraspGenerator:
 
         return grasps, labels
             
-    
-    def generate(self, depth, rgb, bboxes, camera2robot=None, ppx=321.1669921875, ppy=231.57203674316406, 
-                 fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
-
+    def infer_from_model(self, depth, rgb):
+        
         x, _, _ = self.cam_data.get_data(rgb=rgb, depth=depth)
 
         # Predict the grasp pose using the saved model
@@ -86,6 +84,12 @@ class GraspGenerator:
 
         q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
         q_img = np.where(np.squeeze(depth, axis=2)==0, 0, q_img)
+
+        return q_img, ang_img, width_img
+
+    def generate_poses(self, q_img, ang_img, width_img, depth, bboxes, camera2robot=np.eye(4), ppx=321.1669921875, ppy=231.57203674316406, 
+                 fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
+
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
         grasp_poses = []
@@ -93,7 +97,7 @@ class GraspGenerator:
         for i in range(len(grasps)):
 
             # Get grasp position from model output
-            pos_z = depth[grasps[i].center[0], grasps[i].center[1]] - 0.04 # Adjust margin based on gripper geometry
+            pos_z = depth[grasps[i].center[0], grasps[i].center[1]]
             pos_x = np.multiply(grasps[i].center[1] - ppx,
                                 pos_z / fx)
             pos_y = np.multiply(grasps[i].center[0] - ppy,
@@ -110,12 +114,13 @@ class GraspGenerator:
             target_position = target_position[0:3, 0]
 
             # Convert camera to robot angle
-            angle = np.asarray([0, 0, grasps[0].angle])
+            angle = np.asarray([0, 0, grasps[i].angle])
             angle.shape = (3, 1)
             target_angle = np.dot(camera2robot[0:3, 0:3], angle)
 
             # Concatenate grasp pose with grasp angle
             grasp_pose = np.append(target_position, target_angle[2])
+            grasp_pose = np.append(grasp_pose, grasps[i].width)
             grasp_pose = np.append(grasp_pose, labels[i])
             grasp_poses.append(grasp_pose)
             

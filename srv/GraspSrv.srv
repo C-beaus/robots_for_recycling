@@ -1,3 +1,5 @@
-std_msgs/Float64MultiArray data
+# Request
+std_msgs/Float64MultiArray bbs # Flattened bounding boxes
 ---
-std_msgs/Float64MultiArray output
+# Response
+std_msgs/Float64MultiArray grasps # Flattened grasps. each grasp has x y z angle width label
