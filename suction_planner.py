@@ -2,6 +2,11 @@
 import rospy
 from std_msgs.msg import Float64MultiArray
 import numpy as np
+import os, sys
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.append(script_dir)
+
 from suction_gripper_affordance import SuctionGenerator
 from robots_for_recycling.srv import SuctionSrv, SuctionSrvResponse
 
@@ -26,6 +31,7 @@ class SuctionPlanner:
         
         # Create service
         self.s = rospy.Service('get_suctions', SuctionSrv, self.receive_data)
+        rospy.loginfo(f'Suction Node Ready.')
 
     def generate_suction_grasps(self):
 
