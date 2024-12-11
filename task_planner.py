@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from concurrent.futures import ThreadPoolExecutor
 import threading
+from cv_bridge import CvBridge
 
 
 
@@ -22,23 +23,19 @@ class TaskPlanner:
         self.executor = ThreadPoolExecutor()
 
         if calibrate_bool:
-        self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
+            self.calibrate_franka = rospy.Subscriber("/calibrate", Float64, self.calibrate_franka)
+            self.bridge = CvBridge()
 
-        # self.thread_franka = threading.Thread(target=self.run_franka)
-        # self.thread_cartesian = threading.Thread(target=self.run_cartesian)
-
-        # self.thread_franka.start()
-        # self.thread_cartesian.start()
-
-        self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
-        rospy.sleep(0.5)
-        self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
-
-        rospy.on_shutdown(self.shutdown)
+            
         else:
-          self.conveyor_speed_sub = rospy.Subscriber('float32_topic', Float64, self.conveyor_speed_callback)
-          franka_timer = rospy.Timer(rospy.Duration(20), self.run_franka)
-          cartesian_timer = rospy.Timer(rospy.Duration(20), self.run_cartesian)
+            self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
+
+            self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+            rospy.sleep(0.5)
+            self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+
+            rospy.on_shutdown(self.shutdown)
+        
 
     def conveyor_speed_callback(self, msg):
         self.drif_speed = msg.data
@@ -186,80 +183,95 @@ class TaskPlanner:
         return results
 
 
-    def calibrate_franka(self):
+    def calibrate_franka(self, msg):
 
+        counter = 0
         while True:
             # Capture camera frames
-            rgb_image, depth_image, timestamp = self.call_camera_service()
+            # Capture camera frames
+            if counter <10:
+                rgb_image, depth_image, timestamp = self.call_camera_service()
 
-            if rgb_image and depth_image:
-                # Run classification and grasp inference in parallel
-                tasks = [
-                    (self.call_classification_service, rgb_image),
-                    (self.call_grasp_inference_service, depth_image, rgb_image)
-                ]
-                results = self.run_parallel_tasks(tasks, self.executor_franka)
+                if rgb_image and depth_image:
+                    # Run classification and grasp inference in parallel
+                    tasks = [
+                        (self.call_classification_service, rgb_image),
+                        (self.call_grasp_inference_service, depth_image, rgb_image)
+                    ]
+                    results = self.run_parallel_tasks(tasks, self.executor)
 
-                # Handle classification results
-                bboxes = results[0] if results[0] else None
-                if not bboxes:
-                    rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                    # Handle classification results
+                    bboxes = results[0] if results[0] else None
+                    if not bboxes:
+                        rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                        return
+
+                    # Handle grasp inference results
+                    if not results[1]:
+                        rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+                        return
+
+                    rospy.loginfo(f"Results from antipodal grasp service revcevied.")
+
+                else:
+                    rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
                     return
 
-                # Handle grasp inference results
-                if not results[1]:
-                    rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+                # Perform grasp selection
+                grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
+                                                                # row would then become [x, y, z, angle, witdh, label]
+
+                if grasps:
+                    rospy.loginfo("Grasps received for given objects.")
+                else:
+                    rospy.logwarn("No grasps received. Exiting run_franka function.")
                     return
 
-                rospy.loginfo(f"Results from antipodal grasp service revcevied.")
 
-            else:
-                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
-                return
+                radius = 50          # Radius of the circle
+                color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
+                thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
 
-            # Perform grasp selection
-            grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
-                                                            # row would then become [x, y, z, angle, witdh, label]
+                grasps = np.asarray(grasps)
+                rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
 
-            if grasps:
-                rospy.loginfo("Grasps received for given objects.")
-            else:
-                rospy.logwarn("No grasps received. Exiting run_franka function.")
-                return
 
-            radius = 50          # Radius of the circle
-            color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
-            thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
+                # Draw the circle on the image
 
-            # Draw the circle on the image
+                # print(f"here are the boxes: {grasps}")
+                # print(f"type is: {type(grasps)}")
+                # print(f"dir is: {dir(grasps)}")
+                # print(f"output: {yoloV5_data.output}")
+                # print(f"output.data {grasps.output.data}")
 
-            # print(f"here are the boxes: {grasp}")
-            # print(f"type is: {type(yoloV5_data)}")
-            # print(f"dir is: {dir(yoloV5_data)}")
-            # print(f"output: {yoloV5_data.output}")
-            print(f"output.data {grasps.output.data}")
+                ppx=321.1669921875
+                ppy=231.57203674316406
+                fx=605.622314453125
+                fy=605.8401489257812
 
-            ppx=321.1669921875
-            ppy=231.57203674316406
-            fx=605.622314453125
-            fy=605.8401489257812
+                center_z = grasps[2]
+                center_x = (grasps[0]/center_z) * fx + ppx
+                center_y = (grasps[1]/center_z) * fy + ppy
+                print(f"x: {center_x}, y: {center_y}, z: {center_z}")
 
-            center_z = grasps.output.data[2]
-            center_x = (grasps.output.data[0]/center_z) * fx + ppx
-            center_y = (grasps.output.data[1]/center_z) * fy + ppy
-            center = (int(center_x),int(center_y))
-            print(f"center is: {center}")
-            cv2.circle(rgb_image, center, radius, color, thickness)
-            cv2.circle(rgb_image, center, 2, color, 1)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(rgb_frame, f'x: {center_x}, y: {center_y}, z: {center_z}', (50, 50), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-            print("going to show")
+                center = (int(center_x),int(center_y))
+                print(f"center is: {center}")
+                # print(rgb_image)
+                cv2.circle(rgb_frame, center, radius, color, thickness)
+                cv2.circle(rgb_frame, center, 2, color, 1)
 
-            # Display the image with the circle
-            cv2.imshow('Live Image', rgb_image)
+                print("going to show")
 
-            # Press 'q' to exit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                # Display the image with the circle
+                cv2.imshow('Live Image', rgb_frame)
+
+                # Press 'q' to exit
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            counter+=1
 
 
     def run_franka(self, event):
@@ -383,5 +395,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
+    args.calibrate_bool = True
 
     TaskPlanner(args.calibrate_bool).run()
