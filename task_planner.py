@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from PandaManipulator import PandaManipulator
+# from PandaManipulator import PandaManipulator
 import rospy
 from std_msgs.msg import Float64, Float64MultiArray
 import argparse
-from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, SuctionSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest, SuctionSrvRequest
+from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, SuctionSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest, SuctionSrvRequest, PandaSrv, PandaSrvRequest
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -26,6 +26,7 @@ class TaskPlanner:
         if calibrate_bool:
             self.calibrate_franka = rospy.Subscriber("/calibrate", Float64, self.calibrate_franka)
             self.bridge = CvBridge()
+            print("Ready to calibrate")
 
             
         else:
@@ -37,8 +38,8 @@ class TaskPlanner:
 
             rospy.on_shutdown(self.shutdown)
         
-        self.pandaManipulator = PandaManipulator()
-        self.pandaEndEffector = self.pandaManipulator.end_effector
+        # self.pandaManipulator = PandaManipulator()
+        # self.pandaEndEffector = self.pandaManipulator.end_effector
         
 
     def conveyor_speed_callback(self, msg):
@@ -120,7 +121,15 @@ class TaskPlanner:
             rospy.logerr(f"Service call to anipodal grasp selection service failed: {e}")
 
     def call_franka_robot_service(self, grasps):
-        self.pandaManipulator.executeGrasp(grasps)
+        # print(grasps)
+        rospy.wait_for_service('panda_control')
+        try:
+            panda_control = rospy.ServiceProxy('panda_control', PandaSrv)
+            request = PandaSrvRequest()
+            request.grasps.data = grasps
+            response = panda_control(request)
+        except:
+            rospy.loginfo("panda control service failed")
     
     def call_cartesian_robot_service(self, grasps):
         raise NotImplementedError
@@ -399,6 +408,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    args.calibrate_bool = True
+    # args.calibrate_bool = True
 
     TaskPlanner(args.calibrate_bool).run()

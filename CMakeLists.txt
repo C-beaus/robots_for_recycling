@@ -63,6 +63,7 @@ catkin_python_setup()
    CameraSrv.srv
    rgbdSrv.srv
    SuctionSrv.srv
+   PandaSrv.srv
  )
 
 ## Generate actions in the 'action' folder
@@ -170,8 +171,8 @@ catkin_install_python(PROGRAMS
   antipodal_planner.py
   camera_node.py
   suction_planner.py
-  franka/panda_hw/src/panda_control.py
-  src/classification_group.py
+  # franka/panda_hw/src/panda_control.py
+  # src/classification_group.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

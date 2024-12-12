@@ -4,35 +4,68 @@ import sys
 import numpy as np
 from math import pi, cos, sin
 import copy
+# import moveit_commander.roscpp_initializer
+# from moveit_commander.roscpp_initializer import roscpp_initialize
 import rospy
 import moveit_commander
 import tf.transformations as tr
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose
-import moveit_msgs.msg
-import ipdb
 import os
-#Should name the folder that the functions you're trying to call are in?
+from panda_hw.srv import PandaSrv, PandaSrvResponse
+import os
+from scipy.spatial.transform import Rotation as R
+
+
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 package_path = os.path.join(script_dir, "src")
 print(package_path)
-#package_path = home/merlab/RoboticRecycling2023/RBE595/src/robot_recycling/src
-#package_path = os.path.join("src", "src")
+
+# Set constants for gripper
+OPEN = 0.08
+CLOSE = 0.00 #0.0302
 
 
 class PandaControl():
     def __init__(self) -> None:
+        # roscpp_initialize(sys.argv)
+        # moveit_commander.roscpp_initializer(sys.argv)
+        rospy.init_node('panda_traj_node')
+        rospy.sleep(1.0)
+        rospy.loginfo("Panda Control Node Ready")
+
+        # moveit_commander.
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_traj_node',
-                        anonymous=True)
+        # rospy.init_node('panda_traj_node',
+        #                 anonymous=True)
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
-        self.moveGroup = moveit_commander.MoveGroupCommander("panda_manipulator")
+        self.moveGroup = moveit_commander.MoveGroupCommander("panda_arm")
         self.moveGroup.allow_replanning(True)
         self.moveGroup.set_planning_time(30.0)
-        self.moveGroup.set_num_planning_attempts(10)
+        self.moveGroup.set_num_planning_attempts(20)
         self.gripper = moveit_commander.MoveGroupCommander("panda_hand") 
         self.gripper.set_planning_time(10.0)
+        
+        self.scene.remove_world_object()
+        self.add_coveyor()
+        self.add_vbar()
+        self.add_hbar()
+        self.add_camera()
+        self.add_back_wall()
+        self.add_side_wall1()
+        self.add_side_wall2()
+        self.set_def_pos() # Move the robot to home configuartion
+        self.set_gripper_distance(OPEN)
+        print("here")
+
+        # Define recycling locations
+        self.plastic_location = np.array([0.00, -0.3, 0.500, 0.008760752531346035])
+        self.cardboard_location = np.array([0.00, 0.3, 0.500, 0.008760752531346035])
+        #TODO: Implement locations for the other 3 classes
+
+        self.s = rospy.Service("panda_control", PandaSrv, self.main)
 
     def move_joint(self, goalConf):
         # Move the robot on the basis of joint values entered
@@ -98,10 +131,40 @@ class PandaControl():
         waypoints = []
         wpose = self.moveGroup.get_current_pose().pose  # Get current robot pose (Position + Orientation)  (End effector is not considered as a connected part. 
                                                         # It gives current pose for joint just before the end effector connection.)
-        
+        print(f"wpose orientation: {wpose.orientation}")
         wpose.position.x = posStart[0]
         wpose.position.y = posStart[1]
         wpose.position.z = posStart[2]
+
+        # angle to quaternion
+        r = R.from_euler('z', posStart[3])  # 'z' denotes the axis of rotation\
+        q1 = r.as_quat()  # Returns the quaternion as [x, y, z, w]
+
+        # Step 1: Define the quaternion q1 (in reference frame F1)
+        # q1 = np.array([0.707, 0, 0, 0.707])  # Example quaternion (rotation of 90 degrees around Z-axis)
+
+        # Step 2: Convert quaternion q1 to a rotation matrix (R_q)
+        r1 = R.from_quat(q1)  # Convert quaternion to Rotation object
+        R_q = r1.as_matrix()  # Rotation matrix corresponding to q1
+
+        # Step 3: Define the rotation matrix R (transforms F1 to F2)
+        # Example: 90 degrees around the X-axis
+        R_transform = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
+
+        # Step 4: Apply the transformation R to the rotation matrix R_q
+        R_2 = R_q @ R_transform
+        # R_2 = np.dot(R_transform, np.dot(R_q, R_transform.T))
+
+        # Step 5: Convert the resulting rotation matrix R_2 back to a quaternion
+        r2 = R.from_matrix(R_2)
+        quaternion = r2.as_quat()  # Quaternion in reference frame F2
+
+        # wpose.orientation.w = posStart[3]
+        wpose.orientation.x = quaternion[0]
+        wpose.orientation.y = quaternion[1]
+        wpose.orientation.z = quaternion[2]
+        wpose.orientation.w = quaternion[3]
+
         waypoints.append(copy.deepcopy(wpose))
 
         (plan, fraction) = self.moveGroup.compute_cartesian_path(waypoints,0.01, True)  # Generate intermediate waypoints needed for the robot to move to desired location
@@ -115,26 +178,18 @@ class PandaControl():
     def tf_cam_to_panda(self, pos):
         # Transforms coordiantes from camera frame to panda frame
 
-        xRot = np.array([[1, 0, 0, 0],
-                        [0, cos(pi), -sin(pi), 0],
-                        [0, sin(pi), cos(pi), 0],
-                        [0, 0, 0, 1]])
+        p = np.array([pos[0], pos[1], pos[2], 1])
 
-        zRot = np.array([[cos(-pi/2), -sin(-pi/2), 0, 0],
-                        [sin(-pi/2), cos(-pi/2), 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
-        
-        T = np.array([[1, 0, 0, 0.465],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0.75],
-                    [0, 0, 0, 1]])
+        # T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
+        # T = [[0, -1, 0, 0.6101], [1, 0, 0, -0.0176], [0, 0, -1, 1.0007], [0, 0, 0, 1]]
+        T = [[1, 0, 0, 0.5052], [0, -1, 0, 0.0872], [0, 0, -1, 1.0007], [0, 0, 0, 1]]
 
-        p = np.array([pos[0], pos[1], pos[2], 1]).T
-        posPanda = T.dot(xRot).dot(zRot).dot(p)
-        return posPanda
+
+
+        goal_pos = T@p
+        # posPanda = T.dot(xRot).dot(zRot).dot(p)
+        return goal_pos
     
-
     def add_coveyor(self, timeout=4):
 
         scene = self.scene
@@ -251,51 +306,123 @@ class PandaControl():
         self.gripper.go(wait=True)
 
         return True
-
-
-def main():
-    pandaController = PandaControl()
     
-    pandaController.scene.remove_world_object()
-    pandaController.add_coveyor()
-    pandaController.add_vbar()
-    pandaController.add_hbar()
-    pandaController.add_camera()
-    pandaController.add_back_wall()
-    pandaController.add_side_wall1()
-    pandaController.add_side_wall2()
-    pandaController.set_def_pos() # Move the robot to home configuartion
-    pandaController.set_gripper_distance(0.00)
-    print("here")
-
-    # while True:
+    def move_to_camera_coordinates(self, x, y, z, theta):
+        xyzArray = np.array([x, y, z, theta])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
+        pandaCoordinateArray = self.tf_cam_to_panda([xyzArray[0], xyzArray[1], xyzArray[2]])[:-1]   # Convert coordinates to Panda Frame
         
-        # wpose = pandaController.moveGroup.get_current_pose().pose
-        # print(f"x: {wpose.position.x}, y: {wpose.position.y}, z: {wpose.position.z}")
+        print("Moving to location: ", round(x,3), ", ", round(y,3), ", ", round(z,3) + " with orientation: ", round(theta,3))
+        self.execute_traj_start([pandaCoordinateArray, xyzArray[3]])    # Move the robot to given location
+        
+    def move_to_home(self):
+        self.set_def_pos()
+        
+    def closeGripper(self, width = -1):
+        self.set_gripper_distance(CLOSE if width == -1 else width)
+        
+    def openGripper(self):
+        self.set_gripper_distance(OPEN)
 
-    # loaded = np.array([376, 162, 0.822])
+    def run(self):
+        try:
+            rospy.spin()
+        except rospy.ROSInterruptException:
+            rospy.loginfo("Shutting down panda control node")
+        
 
-    # ppx=321.1669921875
-    # ppy=231.57203674316406
-    # fx=605.622314453125
-    # fy=605.8401489257812
+    
+    def main(self, msg):
+        # print(msg)
+        grasp = msg.grasps.data
+        print(f"grasps received {grasp}")
 
-    # # center_z = grasps[2]
-    # # center_x = (grasps[0]/center_z) * fx + ppx
-    # # center_y = (grasps[1]/center_z) * fy + ppy
+        # ppx=321.1669921875
+        # ppy=231.57203674316406
+        # fx=605.622314453125
+        # fy=605.8401489257812
 
-    # R = [[0, 1, 0], [-1, 0, 0], [0, 0, -1]]
-    # pR = [0.5663041, 0.1279476, 0.17321596]
-    # # pC = [376, 162, 0.822]
-    # x = (loaded[0] - ppx) / fx * loaded[2]
-    # y = (loaded[1] - ppy) / fy * loaded[2]
-    # pC = [x, y, loaded[2]]
+        # center_z = grasp[2]
+        # center_x = (grasp[0]/center_z) * fx + ppx
+        # center_y = (grasp[1]/center_z) * fy + ppy
+        # width_in_meters = grasp[4] * (grasp[2]/
+        width_in_meters = grasp[4] #+ 0.01
 
-    loaded = np.array([0.0744, -0.0944, 0.8221, 1])
-    T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
+        base_orientation = 0.008760752531346035
+        orientation = grasp[3]
 
-    goal_pos = T@loaded
+        if width_in_meters <= OPEN:
+            try:
+                # pandaController = PandaControl()
 
-    print(f"goal_pos = {goal_pos}")
+                # move to above object
+                loaded = np.array([grasp[0], grasp[1], grasp[2]]) # -0.2
+                start = self.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
+                # start2 = np.array(start)
 
-    pandaController.execute_traj_start(goal_pos[0:-1]) 
+                start = np.array([start[0], start[1], start[2] + 0.2, orientation])
+
+                try: 
+                    print("Moving to Grasp location")
+                    self.execute_traj_start(start)
+                except rospy.ROSException as e:
+                    rospy.loginfo(f"Error while moving to start position: {e}")
+
+                # move arm so gripper is inside
+                print("should be above grasp, moving gripper now")
+                loaded = np.array([grasp[0], grasp[1], grasp[2]])
+                within_gripper = self.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
+                # within_gripper2 = np.array(within_gripper)
+                within_gripper = np.array([within_gripper[0], within_gripper[1], within_gripper[2] - 0.005, orientation])
+                
+                print("Moving to Within Gripper")
+                self.execute_traj_start(within_gripper)
+
+                # close the gripper around the object
+                self.set_gripper_distance(width_in_meters)
+
+                # move back to above object                
+                print("Moving to Above location")
+                self.execute_traj_start(start)
+
+                # create switch statement for which location to go to based on the label we are receiving
+                self.execute_traj_start(self.plastic_location)
+
+                # open gripper
+                self.set_gripper_distance(OPEN)
+
+                response = PandaSrvResponse()
+                response.flag.data = 1
+
+                return response
+            except rospy.ROSException as e:
+                rospy.loginfo("Can not pick up object because width of grasp is too wide")
+                rospy.loginfo(f"Error is : {e}")
+                response = PandaSrvResponse()
+                response.flag.data = 0
+
+                return response
+        else:
+            print("not getting any viable grasps")
+
+
+
+def default_test():
+    pandaController = PandaControl()
+
+    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
+    start = pandaController.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
+
+    home_pos = np.array([start[0], start[1], start[2]]) #0.00
+    
+    print("Moving to Start location")
+    pandaController.execute_traj_start(home_pos)    # Move the robot to given location
+
+    # print("Moving to Home location")
+    # pandaController.set_def_pos()   # Move the robot to home configuartion
+    # pandaController.scene.remove_world_object()   # Remove all the objects from the scene
+
+
+
+if __name__ == "__main__":
+    PandaControl().run()
+    # default_test()

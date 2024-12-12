@@ -102,6 +102,8 @@ class GraspGenerator:
                                 pos_z / fx)
             pos_y = np.multiply(grasps[i].center[0] - ppy,
                                 pos_z / fy)
+            # TESTING UPDATE WIDTH
+            grasps[i].width = np.multiply(grasps[i].width, pos_z / fx)
 
             if pos_z == 0:
                 print("Invalid Depth Found")
