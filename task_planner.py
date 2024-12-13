@@ -23,6 +23,9 @@ class TaskPlanner:
         self.drift_speed = 0
         self.executor = ThreadPoolExecutor()
 
+        self.franka_running = False  # Reentrancy guard for franka
+        self.cartesian_running = False 
+
         if calibrate_bool:
             self.calibrate_franka = rospy.Subscriber("/calibrate", Float64, self.calibrate_franka)
             self.bridge = CvBridge()
@@ -288,84 +291,108 @@ class TaskPlanner:
 
 
     def run_franka(self, event):
+
+        if self.franka_running:
+            rospy.loginfo("run_franka callback is already running. Skipping this cycle.")
+            return
         
-        # Capture camera frames
-        rgb_image, depth_image, timestamp = self.call_camera_service()
+        self.franka_running = True
+        
+        try:
+            # Capture camera frames
+            rgb_image, depth_image, timestamp = self.call_camera_service()
 
-        if rgb_image and depth_image:
-            # Run classification and grasp inference in parallel
-            tasks = [
-                (self.call_classification_service, rgb_image),
-                (self.call_grasp_inference_service, depth_image, rgb_image)
-            ]
-            results = self.run_parallel_tasks(tasks, self.executor)
+            if rgb_image and depth_image:
+                # Run classification and grasp inference in parallel
+                tasks = [
+                    (self.call_classification_service, rgb_image),
+                    (self.call_grasp_inference_service, depth_image, rgb_image)
+                ]
+                results = self.run_parallel_tasks(tasks, self.executor)
 
-            # Handle classification results
-            bboxes = results[0] if results[0] else None
-            if not bboxes:
-                rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                # Handle classification results
+                bboxes = results[0] if results[0] else None
+                if not bboxes:
+                    rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                    return
+
+                # Handle grasp inference results
+                if not results[1]:
+                    rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+                    return
+
+                rospy.loginfo(f"Results from antipodal grasp service revcevied.")
+
+            else:
+                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
                 return
 
-            # Handle grasp inference results
-            if not results[1]:
-                rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+            # Perform grasp selection
+            grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
+                                                            # row would then become [x, y, z, angle, witdh, label]
+
+            if grasps:
+                rospy.loginfo("Grasps received for given objects.")
+            else:
+                rospy.logwarn("No grasps received. Exiting run_franka function.")
                 return
 
-            rospy.loginfo(f"Results from antipodal grasp service revcevied.")
-
-        else:
-            rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
-            return
-
-        # Perform grasp selection
-        grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
-                                                           # row would then become [x, y, z, angle, witdh, label]
-
-        if grasps:
-            rospy.loginfo("Grasps received for given objects.")
-        else:
-            rospy.logwarn("No grasps received. Exiting run_franka function.")
-            return
-
-        # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
-        # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-        self.call_franka_robot_service(grasps)
+            # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
+            # The current grasps are computed at the object, so they need a little offset to not collide with the object.
+            self.call_franka_robot_service(grasps)
+        except Exception as e:
+            rospy.logerr(f"Error running run_franka callback: {e}")
+        finally:
+            self.franka_running = False
 
     
     def run_cartesian(self, event):
 
-        # Capture camera frames
-        rgb_image, depth_image, timestamp = self.call_camera_service()
-
-        if rgb_image and depth_image:
-
-            # Run classification first
-            bboxes = self.call_classification_service(rgb_image)
-
-            # Handle classification results
-            if not bboxes:
-                rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
-                return
-
-            print("here")
-            suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
-                                                                                # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
-
-            print("suction grasps collected")
-            # Handle suciton grasp results
-            if not suction_grasps:
-                rospy.logwarn("Suction grasps not found. Exiting run_cartesian function.")
-                return
-
-            rospy.loginfo(f"Grasps received for given objects.")
-
-        else:
-            rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
+        if self.cartesian_running:
+            rospy.loginfo("run_cartesian callback is already running. Skipping this cycle.")
             return
 
-        # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
-        # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-        self.call_cartesian_robot_service(suction_grasps)
+        self.cartesian_running = True
+
+        try:
+
+            # Capture camera frames
+            rgb_image, depth_image, timestamp = self.call_camera_service()
+
+            if rgb_image and depth_image:
+
+                # Run classification first
+                bboxes = self.call_classification_service(rgb_image)
+
+                # Handle classification results
+                if not bboxes:
+                    rospy.logwarn("No bounding boxes detected from classification. Exiting run_cartesian function.")
+                    return
+
+                print("here")
+                suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
+                                                                                    # grasps.reshape(-1, 3) where each  row would then become [x, y, z]
+
+                print("suction grasps collected")
+                # Handle suciton grasp results
+                if not suction_grasps:
+                    rospy.logwarn("Suction grasps not found. Exiting run_cartesian function.")
+                    return
+
+                rospy.loginfo(f"Grasps received for given objects.")
+
+            else:
+                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
+                return
+
+            # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
+            # The current grasps are computed at the object, so they need a little offset to not collide with the object.
+            self.call_cartesian_robot_service(suction_grasps)
+
+        except Exception as e:
+            rospy.logerr(f"Error running run_cartesian callback: {e}")
+        finally:
+            self.cartesian_running = False
 
     def shutdown(self):
         rospy.loginfo("Shutting down task planner")
