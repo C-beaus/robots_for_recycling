@@ -23,10 +23,10 @@ class SuctionPlanner:
         rospy.init_node("suction_planner_service")
 
         self.cam2robot = np.eye(4) # Replace with the extrinsic calibration
-        self.grid_resoltuion = 0.001 # Forgot what value was good for this.
+        self.grid_resoltuion = 0.001/3 # Forgot what value was good for this.
         self.coverage_threshold = 0.85
-        self.belt_depth = 0.804 # Measure this, I do not remember correct value
-        self.z_component_threshold = 0.9 # For surface normals.
+        self.belt_depth = 0.834 # Measure this, I do not remember correct value
+        self.z_component_threshold = 0.8 # For surface normals.
         self.succ_gen = SuctionGenerator(self.cam2robot, self.grid_resoltuion, self.coverage_threshold, self.belt_depth)
         self.boxes = None
         self.bridge = CvBridge()
