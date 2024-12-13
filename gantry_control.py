@@ -6,6 +6,7 @@ import os, sys
 import serial
 import time
 from std_msgs.msg import Float64, String, Int16, Int32, Bool, Float32
+from robots_for_recycling.srv import GantrySrv
 
 
 class GantryControl:
