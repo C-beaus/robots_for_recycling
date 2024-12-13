@@ -171,6 +171,7 @@ catkin_install_python(PROGRAMS
   antipodal_planner.py
   camera_node.py
   suction_planner.py
+  # gantry_control.py
   # franka/panda_hw/src/panda_control.py
   # src/classification_group.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
