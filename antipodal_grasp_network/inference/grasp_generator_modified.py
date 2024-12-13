@@ -35,9 +35,9 @@ class GraspGenerator:
         self.grasp_available = os.path.join(homedir, "grasp_available.npy")
         self.grasp_pose = os.path.join(homedir, "grasp_pose.npy")
 
-        self.thread = threading.Thread(target=self.visualize_grasps)
-        self.thread.daemon = True
-        self.thread.start()
+        # self.thread = threading.Thread(target=self.visualize_grasps)
+        # self.thread.daemon = True
+        # self.thread.start()
 
 
     def load_model(self):
@@ -104,6 +104,8 @@ class GraspGenerator:
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
         self.grasps = grasps
+
+        self.visualize_grasps()
 
         grasp_poses = []
 
