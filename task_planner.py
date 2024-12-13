@@ -134,8 +134,17 @@ class TaskPlanner:
         except:
             rospy.loginfo("panda control service failed")
     
-    def call_cartesian_robot_service(self, grasps):
-        raise NotImplementedError
+    def call_cartesian_robot_service(self, grasps): # WIP
+        # Wait for the service to become available
+        rospy.wait_for_service('get_plucked')
+        try:
+            gantry_control = rospy.ServiceProxy('gantry_control', GantrySrv)
+            request = GantrySrvRequest()
+            request.grasps.data = grasps
+            response = gantry_control(request)
+            return NotImplementedError
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to gantry control service failed: {e}")
     
     def call_suction_grasp_service(self, depth_image, bboxes):
         
@@ -380,6 +389,10 @@ class TaskPlanner:
                     return
 
                 rospy.loginfo(f"Grasps received for given objects.")
+
+                # TODO: add separate integration for conveyor and gantry.
+                print("attempting gantry")
+                gantry_plucked = self.call_cartesian_robot_service(suction_grasps)
 
             else:
                 rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
