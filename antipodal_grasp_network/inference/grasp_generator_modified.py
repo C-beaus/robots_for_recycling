@@ -1,10 +1,9 @@
 import os
 import time
-
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import cv2
+import matplotlib.pyplot as plt
 
 from hardware.camera import RealSenseCamera
 from hardware.device import get_device
@@ -35,9 +34,9 @@ class GraspGenerator:
         self.grasp_available = os.path.join(homedir, "grasp_available.npy")
         self.grasp_pose = os.path.join(homedir, "grasp_pose.npy")
 
-        # self.thread = threading.Thread(target=self.visualize_grasps)
-        # self.thread.daemon = True
-        # self.thread.start()
+        self.thread = threading.Thread(target=self.visualize_grasps)
+        self.thread.daemon = True
+        self.thread.start()
 
 
     def load_model(self):
@@ -94,18 +93,34 @@ class GraspGenerator:
     
     def visualize_grasps(self):
 
-        plot_grasp(fig=self.fig, rgb_img=self.rgb_img, grasps=self.grasps, save=False)
+        for grasp in self.grasps:
+
+            center = grasp.center
+            width = grasp.width
+            angle = grasp.angle
+            height = width
+            
+            rect = ((float(center[1]), float(center[0])), (width, height), np.degrees(angle))
+            box = cv2.boxPoints(rect)
+            box = np.int0(box)
+
+            cv2.polylines(self.rgb_img, [box], isClosed=True, color=(255, 0, 0), thickness=2)
+
+        cv2.imshow("Grasps", self.rgb_img)
+        cv2.waitKey(5000)
+        cv2.destroyAllWindows()
 
 
 
     def generate_poses(self, q_img, ang_img, width_img, depth, bboxes, camera2robot=np.eye(4), ppx=321.1669921875, ppy=231.57203674316406, 
-                 fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
+                 fx=605.622314453125, fy=605.8401489257812, visualize=False): # Currently runs inference on entire image instead of each individual bounnding boxes
 
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
         self.grasps = grasps
-
-        self.visualize_grasps()
+        
+        if visualize:
+            self.visualize_grasps()
 
         grasp_poses = []
 

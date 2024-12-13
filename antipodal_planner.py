@@ -65,7 +65,7 @@ class AntipodalPlanner:
 
         grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
                                                 bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
-                                                fx=605.622314453125, fy=605.8401489257812)
+                                                fx=605.622314453125, fy=605.8401489257812, visualize=False)
         grasp_poses = np.array(grasp_poses, dtype=np.float64)
         flattened_grasp_poses = grasp_poses.flatten()
 
