@@ -13,6 +13,7 @@ from utils.data.camera_data import CameraData
 from utils.dataset_processing.grasp import Grasp, detect_grasps
 from utils.visualisation.plot import plot_grasp
 from skimage.feature import peak_local_max
+import threading
 
 
 class GraspGenerator:
@@ -33,6 +34,10 @@ class GraspGenerator:
         self.grasp_request = os.path.join(homedir, "grasp_request.npy")
         self.grasp_available = os.path.join(homedir, "grasp_available.npy")
         self.grasp_pose = os.path.join(homedir, "grasp_pose.npy")
+
+        # self.thread = threading.Thread(target=self.visualize_grasps)
+        # self.thread.daemon = True
+        # self.thread.start()
 
 
     def load_model(self):
@@ -74,7 +79,7 @@ class GraspGenerator:
         return grasps, labels
             
     def infer_from_model(self, depth, rgb):
-        
+        self.rgb_img = rgb
         x, _, _ = self.cam_data.get_data(rgb=rgb, depth=depth)
 
         # Predict the grasp pose using the saved model
@@ -86,11 +91,21 @@ class GraspGenerator:
         q_img = np.where(np.squeeze(depth, axis=2)==0, 0, q_img)
 
         return q_img, ang_img, width_img
+    
+    def visualize_grasps(self):
+
+        plot_grasp(fig=self.fig, rgb_img=self.rgb_img, grasps=self.grasps, save=False)
+
+
 
     def generate_poses(self, q_img, ang_img, width_img, depth, bboxes, camera2robot=np.eye(4), ppx=321.1669921875, ppy=231.57203674316406, 
                  fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
 
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
+
+        self.grasps = grasps
+
+        self.visualize_grasps()
 
         grasp_poses = []
 
