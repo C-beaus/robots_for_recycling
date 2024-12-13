@@ -8,6 +8,7 @@ if script_dir not in sys.path:
     sys.path.append(script_dir)
 
 from suction_gripper_affordance import SuctionGenerator
+from suction_affordance_fast import SuctionGeneratorFast
 from robots_for_recycling.srv import SuctionSrv, SuctionSrvResponse
 from cv_bridge import CvBridge 
 
@@ -21,13 +22,16 @@ class SuctionPlanner:
         Class constructor
         """
         rospy.init_node("suction_planner_service")
-
+        self.fast_suction=True
         self.cam2robot = np.eye(4) # Replace with the extrinsic calibration
         self.grid_resoltuion = 0.001/3 # Forgot what value was good for this.
         self.coverage_threshold = 0.85
         self.belt_depth = 0.834 # Measure this, I do not remember correct value
         self.z_component_threshold = 0.8 # For surface normals.
-        self.succ_gen = SuctionGenerator(self.cam2robot, self.grid_resoltuion, self.coverage_threshold, self.belt_depth)
+        if not self.fast_suction:
+            self.succ_gen = SuctionGenerator(self.cam2robot, self.grid_resoltuion, self.coverage_threshold, self.belt_depth)
+        else:
+            self.succ_faster = SuctionGeneratorFast(self.cam2robot, self.grid_resoltuion, self.coverage_threshold, self.belt_depth)
         self.boxes = None
         self.bridge = CvBridge()
         
@@ -36,8 +40,10 @@ class SuctionPlanner:
         rospy.loginfo(f'Suction Node Ready.')
 
     def generate_suction_grasps(self):
-
-        suction_poses = self.succ_gen.generate_suction(self.depth_map, self.boxes, self.z_component_threshold) # [[x, y, z, label], .....]
+        if not self.fast_suction:
+            suction_poses = self.succ_gen.generate_suction(self.depth_map, self.boxes, self.z_component_threshold) # [[x, y, z, label], .....]
+        else:
+            suction_poses = self.succ_faster.generate_suction(self.depth_map, self.boxes, self.z_component_threshold)
         flattened_suction_poses = suction_poses.flatten()
 
         return flattened_suction_poses

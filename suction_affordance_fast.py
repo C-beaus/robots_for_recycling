@@ -5,7 +5,7 @@ import open3d as o3d
 import cv2
 import matplotlib.pyplot as plt
 
-class SuctionGenerator:
+class SuctionGeneratorFast:
     
     def __init__(self, cam2robot, grid_resoltuion, coverage_threshold, belt_depth):
         
@@ -105,55 +105,11 @@ class SuctionGenerator:
         # Check if the Region of Interest is atleast equal to or bigger than the suciton cup
         if occupancy_grid.shape[0] < suction_kernel.shape[0] or occupancy_grid.shape[1] < suction_kernel.shape[1]:
             print("Suction cup cannot be used for the given object. Object is too small.")
-            return None
+            return False
+        else:
+            return True
 
-        # Generate affordance map
-        suction_affordance = convolve(occupancy_grid, suction_kernel, mode='constant', cval=0)
-
-        # self.plot_grid(suction_affordance)
-
-        # Find indices of all points meeting the coverage threshold
-        valid_indices = np.argwhere(suction_affordance > self.coverage_threshold)
-
-        if valid_indices.size == 0:
-            print("Suction cup cannot be used for the given object. No points meet the coverage threshold.")
-            return None
-
-        grid_center = np.array(occupancy_grid.shape) / 2
-
-        distances = np.linalg.norm(valid_indices - grid_center, axis=1)
-
-        # Select the index of the point closest to the center
-        closest_index = valid_indices[np.argmin(distances)]
-
-        X_real_world, Y_real_world = self.grid_to_world_coordinates(
-            closest_index[1], closest_index[0], grid_min_X, grid_min_Y
-        )
-
-        print(f"Suction gripper point ({X_real_world}, {Y_real_world}) found.")
-
-        return X_real_world, Y_real_world
-
-        
-    def grid_to_world_coordinates(self, grid_x, grid_y, grid_min_X, grid_min_Y):
-
-        x = grid_min_X + (grid_x * self.grid_resolution)
-        y = grid_min_Y + (grid_y * self.grid_resolution)
-
-        return x, y
     
-    def compute_z(self, point_xy, pcd):
-
-        points = np.asarray(pcd.points)
-        x = points[:, 0]
-        y = points[:, 1]
-        z = points[:, 2]
-
-        distances = np.sqrt((x - point_xy[0])**2 + (y - point_xy[1])**2)
-        
-        closest_index = np.argmin(distances)
-        
-        return z[closest_index]
 
     def plot_grid(self, grid):
 
@@ -254,26 +210,30 @@ class SuctionGenerator:
             # self.plot_grid(kernel)
 
             # Choose a valid point closest to bbox center
-            point_xy = self.choose_approach_point(occupancy_grid, kernel, min_x, min_y)
+            suction_possible = self.choose_approach_point(occupancy_grid, kernel, min_x, min_y)
 
-            if point_xy:
+            if suction_possible:
+                z = depth[int(y_center), int(x_center)]
+                x = ((x_center - 321.1669921875)/ 605.622314453125 )* z
+                y = ((y_center - 231.57203674316406)/ 605.8401489257812 )* z
+                point = np.array([x, y, z, 1])
+            else:
+                return None
 
-                z = self.compute_z(point_xy, flat_pcd)
-                point = np.array([point_xy[0], point_xy[1], z, 1])
-                transformed_point = self.cam2robot @ point
-                grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
-                points.append(grasp_point)
+            transformed_point = self.cam2robot @ point
+            grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
+            points.append(grasp_point)
 
-                sphere_radius = 0.005 # meters
-                mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_radius)
-                mesh_sphere.paint_uniform_color([0.5, 0, 0.5])
-                mesh_sphere.translate([grasp_point[0], grasp_point[1], grasp_point[2]])
+            # sphere_radius = 0.005 # meters
+            # mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_radius)
+            # mesh_sphere.paint_uniform_color([0.5, 0, 0.5])
+            # mesh_sphere.translate([grasp_point[0], grasp_point[1], grasp_point[2]])
+
+            # temp_pcd = o3d.geometry.PointCloud()
+            # temp_pcd.points = o3d.utility.Vector3dVector([grasp_point[:3]])
+
+            # temp_pcd.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
+
+            # o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
     
-                temp_pcd = o3d.geometry.PointCloud()
-                temp_pcd.points = o3d.utility.Vector3dVector([grasp_point[:3]])
-
-                temp_pcd.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
-
-                o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
-        
         return np.array(points)
