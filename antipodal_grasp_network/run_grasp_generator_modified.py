@@ -53,7 +53,7 @@ def capture_frames():
         pipeline.stop()
         return color_image, depth_image, depth_scale
     
-def process_frames(color_image, depth_image, depth_scale):
+def process_frames(color_image, depth_image, depth_scale=1):
 
     depth_image *= depth_scale
     color_image = 255 - color_image
@@ -80,19 +80,17 @@ def find_largest_contour(image):
     return largest_contour
 
 
-def generate_poses(generator=None, bboxes=None, camera2robot=None, color_image=None, depth_image=None, use_cam=True):
+def run_inference(generator=None, color_image=None, depth_image=None, use_cam=False):
 
     # color_image and depth_image obtained from either classification team or collected ourselves
     # Collect own images if classification team did not provide them
     if use_cam:
         color_image, depth_image, depth_scale = capture_frames()
+        color_image, depth_image =  process_frames(color_image, depth_image, depth_scale=depth_scale)
     
-    color_image, depth_image =  process_frames(color_image, depth_image, depth_scale)
-    
-    # grasp poses is a list of arrays like [np.array([x,y,z,angle,width,label]), ....]
-    # label of object included with grasp
-    grasp_poses = generator.generate(depth=depth_image, rgb=color_image, bboxes=bboxes, camera2robot=camera2robot, 
-                                             ppx=321.1669921875, ppy=231.57203674316406, fx=605.622314453125, 
-                                             fy=605.8401489257812)
-    
-    return np.array(grasp_poses, dtype=np.float64)
+    # Depth scale already multiplied if image came from camera node
+    color_image, depth_image =  process_frames(color_image, depth_image)
+
+    q_img, ang_img, width_img = generator.infer_from_model(depth=depth_image, rgb=color_image)
+       
+    return q_img, ang_img, width_img
