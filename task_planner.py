@@ -35,9 +35,14 @@ class TaskPlanner:
         else:
             self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
 
-            self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
-            rospy.sleep(0.5)
-            self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+            # self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+            # rospy.sleep(0.5)
+            # self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+
+            self.objects_in_frame = []
+            self.objects_we_tried = []
+
+            self.run_franka()
 
             rospy.on_shutdown(self.shutdown)
         
@@ -297,49 +302,79 @@ class TaskPlanner:
             return
         
         self.franka_running = True
+        empty_frame = False
         
         try:
-            # Capture camera frames
-            rgb_image, depth_image, timestamp = self.call_camera_service()
+            while not empty_frame:
+                # Capture camera frames
+                rgb_image, depth_image, timestamp = self.call_camera_service()
 
-            if rgb_image and depth_image:
-                # Run classification and grasp inference in parallel
-                tasks = [
-                    (self.call_classification_service, rgb_image),
-                    (self.call_grasp_inference_service, depth_image, rgb_image)
-                ]
-                results = self.run_parallel_tasks(tasks, self.executor)
+                if rgb_image and depth_image:
+                    # Run classification and grasp inference in parallel
+                    tasks = [
+                        (self.call_classification_service, rgb_image),
+                        (self.call_grasp_inference_service, depth_image, rgb_image)
+                    ]
+                    results = self.run_parallel_tasks(tasks, self.executor)
 
-                # Handle classification results
-                bboxes = results[0] if results[0] else None
-                if not bboxes:
-                    rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                    # Handle classification results
+                    bboxes = results[0] if results[0] else None
+                    if not bboxes:
+                        rospy.logwarn("No bounding boxes detected from classification. Exiting run_franka function.")
+                        empty_frame == True
+                        break
+
+                    # Handle grasp inference results
+                    if not results[1]:
+                        rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+                        return
+
+                    rospy.loginfo(f"Results from antipodal grasp service revcevied.")
+
+                else:
+                    rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
                     return
 
-                # Handle grasp inference results
-                if not results[1]:
-                    rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
+                # Perform grasp selection
+                grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
+                                                                # row would then become [x, y, z, angle, witdh, label]
+                grasps_reshaped = grasps.reshape(-1,6)
+
+                # If this is the first time and there are no objects, add them all
+                if self.objects_in_frame == [] and self.objects_we_tried == []:
+                    self.objects_in_frame = grasps_reshaped
+                    # self.objects_we_tried = grasps_reshaped
+                # Otherwise compare tolerance between x and y points of grasp to current values in list
+                else:
+                    tolerance = 0.01
+                    for grasp in grasps_reshaped:
+                        for object in self.objects_we_tried:
+                            if abs(object[0] - grasp[0]) > tolerance and abs(object[1] - grasp[1]) > tolerance and grasp not in self.objects_we_tried:
+                                self.objects_in_frame.append(grasp)
+                                # self.objects_we_tried.append(grasp)
+
+                if self.objects_in_frame == []:
+                    empty_frame == True
+                    break
+
+                if grasps:
+                    rospy.loginfo("Grasps received for given objects.")
+                else:
+                    rospy.logwarn("No grasps received. Exiting run_franka function.")
                     return
 
-                rospy.loginfo(f"Results from antipodal grasp service revcevied.")
+                # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
+                # The current grasps are computed at the object, so they need a little offset to not collide with the object.
+                self.objects_in_frame.flatten()
+                self.call_franka_robot_service(self.objects_in_frame)
 
-            else:
-                rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
-                return
+                # append to objects we tried to ensure we don't keep trying for the same object
+                self.objects_we_tried.append(self.objects_in_frame[0])
+                self.objects_in_frame = []
 
-            # Perform grasp selection
-            grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
-                                                            # row would then become [x, y, z, angle, witdh, label]
-
-            if grasps:
-                rospy.loginfo("Grasps received for given objects.")
-            else:
-                rospy.logwarn("No grasps received. Exiting run_franka function.")
-                return
-
-            # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
-            # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-            self.call_franka_robot_service(grasps)
+            self.objects_we_tried = []
+            self.objects_in_frame = []
+            self.run_cartesian()
         except Exception as e:
             rospy.logerr(f"Error running run_franka callback: {e}")
         finally:
