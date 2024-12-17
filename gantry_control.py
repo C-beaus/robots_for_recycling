@@ -240,6 +240,8 @@ class GantryControl:
 
             # Publish the speed to the main conveyor
             self.pubSetConveyor2.publish(main_speed_msg)
+            if main_speed_msg != 0:
+                rospy.sleep(1)
             # self.pubConveySpeed.publish(main_speed_msg)
 
             # Log the result
@@ -286,7 +288,7 @@ class GantryControl:
         speed = direction * abs(self.conveyor_speed)
 
         # Calculate time required
-        travel_time = abs(distance_in_inches) / abs(self.conveyor_speed)
+        travel_time = abs(distance_in_inches) / abs(self.conveyor_speed/5)
 
         rospy.loginfo(f"Moving conveyor {distance_in_inches} inches at {speed} inches/sec for {travel_time:.2f} seconds.")
 
@@ -310,6 +312,7 @@ class GantryControl:
         ])
         
         # Extract grasp pose coordinates and label
+        print("grasp_pose:",grasp_pose)
         x, y, z, label = grasp_pose
         
         # Convert grasp pose to homogeneous coordinates (4x1)
@@ -331,7 +334,7 @@ class GantryControl:
         # Return the transformed pose (x, y, z, label)
         return [x_new, y_new, z_new, label]
     
-    def truncate_to_three_decimal_places(value): #TODO: move this to a helper function
+    def truncate_to_three_decimal_places(self, value): #TODO: move this to a helper function
         """Truncate a floating-point value to three decimal places."""
         return int(value * 1000) / 1000
 
@@ -343,14 +346,17 @@ class GantryControl:
       # extrast grasp pose
         sucPose = req.grasps.data # [[x, y, z, label], .....]
       # convert grasp pose from camera frame to gantry frame
-        gantryPose = self.convert_cam2gantryPose(sucPose[0])
+        gantryPose = self.convert_cam2gantryPose(sucPose)
       # truncate pose values to three decimal places
         gantryPose = [self.truncate_to_three_decimal_places(value) for value in gantryPose]
       # send gantry home (required on startup) NOTE: move this to startup
         rospy.loginfo("gantry_control - Gantry to Home")
         self.callbackHome()
+        rospy.loginfo("SLEEP 5") #temporary
+        rospy.sleep(5)
       # use y value for conveyor control - send item from camera view to gantry alignment
         # TODO: implement conveyor control
+        rospy.loginfo("Moving conveyor")
         self.move_conveyor(gantryPose[1])
         # use x value of gantry alignment on conveyor
         rospy.loginfo(f"gantry_control - Gantry to X: {gantryPose[0]}")

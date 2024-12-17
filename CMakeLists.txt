@@ -64,6 +64,7 @@ catkin_python_setup()
    rgbdSrv.srv
    SuctionSrv.srv
    PandaSrv.srv
+   GantrySrv.srv
  )
 
 ## Generate actions in the 'action' folder
