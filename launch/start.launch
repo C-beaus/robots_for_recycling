@@ -7,9 +7,9 @@
   <node pkg="robots_for_recycling" type="suction_affordance_fast.py" name="suction_affordance_fast"/>
   <node pkg="panda_hw" type="panda_control_595.py" name="panda_control_595"/>
 
-  <include file="$(find panda_hw)/launch/start_hw_robot.launch">
+  <!-- <include file="$(find panda_hw)/launch/start_hw_robot.launch"/> -->
     <!-- <arg name="model" value="$(arg model)"/>
     <arg name="configuration_basename" value="$(arg configuration_basename)"/> -->
-  </include>
+  <!-- </include> -->
   
 </launch>
