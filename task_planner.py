@@ -338,26 +338,20 @@ class TaskPlanner:
                 # Perform grasp selection
                 grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
                                                                 # row would then become [x, y, z, angle, witdh, label]\
-                # print(f"grasps: {grasps}")
                 grasps_reshaped = np.asarray(grasps).reshape(-1,6)
 
                 # If this is the first time and there are no objects, add them all
-                # print(f"len(self.objects_we_tried): {len(self.objects_we_tried)}")
                 if len(self.objects_we_tried) == 0:
                     self.objects_in_frame = grasps_reshaped.tolist()
-                    # self.objects_we_tried = grasps_reshaped
+
                 # Otherwise compare tolerance between x and y points of grasp to current values in list
                 else:
                     tolerance = 0.03
                     for grasp in grasps_reshaped:
-                        for object in self.objects_we_tried:
-                            print("TOLERANCES",abs(object[0] - grasp[0]), abs(object[0] - grasp[0]))
-                            if abs(object[0] - grasp[0]) > tolerance and abs(object[1] - grasp[1]) > tolerance and not any(grasp[0] == x[0] and grasp[1] == x[1] for x in self.objects_we_tried):
-                                self.objects_in_frame.append(grasp.tolist())
-                                # self.objects_we_tried.append(grasp)
+                        if all(abs(x[0] - grasp[0]) > tolerance and abs(x[1] - grasp[1]) > tolerance for x in self.objects_we_tried):
+                            self.objects_in_frame.append(grasp.tolist())
 
-                print(f"objects in frame: {self.objects_in_frame}")
-                # print(f"len(self.objects_in_frame): {len(self.objects_in_frame)}")
+
                 if len(self.objects_in_frame) == 0:
                     empty_frame == True
                     break
@@ -371,15 +365,16 @@ class TaskPlanner:
                 # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
                 # The current grasps are computed at the object, so they need a little offset to not collide with the object.
                 msg_list = np.asarray(self.objects_in_frame).flatten()
-                # print(f"msg_list: {msg_list}")
                 self.call_franka_robot_service(msg_list)
 
                 # append to objects we tried to ensure we don't keep trying for the same object
                 self.objects_we_tried.append(self.objects_in_frame[0])
                 self.objects_in_frame[:] = []
+                print(self.objects_in_frame,"HAS THIS BEEN CLEARED?")
 
             self.objects_we_tried = []
             self.objects_in_frame = []
+            print("No more grasps able to be handled by the franka arm")
             self.run_cartesian()
         except Exception as e:
             rospy.logerr(f"Error running run_franka callback: {e}")
