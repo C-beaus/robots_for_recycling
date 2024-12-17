@@ -8,6 +8,12 @@ import time
 from std_msgs.msg import Float64, String, Int16, Int32, Bool, Float32
 from robots_for_recycling.srv import GantrySrv
 
+'''
+Terminal command to test service call:
+$ rosservice call /get_plucked ""
+
+
+'''
 
 class GantryControl:
     """
