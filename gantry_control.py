@@ -9,11 +9,17 @@ from std_msgs.msg import Float64, String, Int16, Int32, Bool, Float32
 from robots_for_recycling.srv import GantrySrv
 
 '''
-Terminal command to test service call:
-$ rosservice call /get_plucked ""
+Check if the service is available:
+$ rosservice list
 
+Inspect the service call:
+$ rosservice type /get_plucked | rossrv show
+
+Call the service:
+$ rosservice call /get_plucked "grasps: {data: [0.5, 0.5, 0.2, 0]}"
 
 '''
+
 
 class GantryControl:
     """
