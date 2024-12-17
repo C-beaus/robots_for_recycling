@@ -9,6 +9,19 @@ from std_msgs.msg import Float64, String, Int16, Int32, Bool, Float32
 from robots_for_recycling.srv import GantrySrv
 
 '''
+From control_example.py
+
+# To run: 
+
+# Terminal 1: cd RoboticRecycling2023/recycling/src   -->  roslaunch RecyclingSystem.launch
+# Terminal 2: rosrun rosserial_python serial_node.py _port:=/dev/ttyACM2 _baud:=57600     (Port /dev/ttyACM2 corresponds to Pneumatic Actuator Ardiuno)
+# In the Conveyor Belt GUI, in Gantry Controls section, press HOME button. (If this is not done, then the code will not execute)
+# Terminal 3: cd RoboticRecycling2023/RBE595/   --> source devel/setup.bash   --> rosrun robots_recycling control_example.py
+# If you are doing any chnages then remeber to do 'catkin_make' then 'source devel/setup.bash'
+
+
+-----------------
+
 Check if the service is available:
 $ rosservice list
 
