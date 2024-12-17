@@ -407,7 +407,7 @@ class TaskPlanner:
 
                 print("here")
                 suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
-                                            # grasps.reshape(-1, 5) where each  row would then become [x, y, z, distance to gantry, label]
+                                            # grasps.reshape(-1, 4) where each  row would then become [x, y, z, label]
 
                 print("suction grasps collected")
                 # Handle suciton grasp results
