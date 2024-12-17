@@ -64,7 +64,7 @@ class SuctionPlanner:
         response = SuctionSrvResponse()
         response.grasps.data = flattened_suction_poses
 
-        rospy.loginfo(f'Suction poses: {response.grasps.data.reshape(-1, 5)}') # x, y, z, distance to gantry, label
+        rospy.loginfo(f'Suction poses: {response.grasps.data.reshape(-1, 4)}') # x, y, z, label
 
         return response
 
