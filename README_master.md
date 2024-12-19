@@ -11,7 +11,16 @@ To run the code, first clone this repository into the src folder of your catkin 
 "pip install -r requirements.txt"
 ```
 
-To run the code, open a new terminal and navigate to the catkin workspace where the robots_for_recycling package is located. Catkin make and source this workspace by running the following: 
+To start the PANDA nodes, open a new terminal and navigate to the "panda_recycling" workspace. Catkin make and source this workspace, then run the following in the command line to launch all necessary nodes in the project. Make sure you are holding the deadman switch before running the following command: 
+```
+"roslaunch panda_hw start_hw_robot.launch" 
+```
+Then, open a new terminal, cd into the panda_recycling workspace, catkin make and source the workspace, and run the following in the commane line:
+```
+"rosrun panda_hw panda_control_595.py"
+```
+
+Once the PANDA nodes are initialized, you can launch the rest of the code. Open a new terminal and navigate to the catkin workspace where the robots_for_recycling package is located. Catkin make and source this workspace by running the following: 
 ```
 "catkin_make"
 ``` 
@@ -23,10 +32,6 @@ Next, run the following command to launch all necessary nodes in the project:
 roslaunch robots_for_recycling start.launch"
 ```
 
-To start the PANDA nodes, open a new terminal and navigate to the "panda_recycling" workspace. Catkin make and source this workspace, then run the following in the command line to launch all necessary nodes in the project: 
-```
-"roslaunch panda_hw start.launch"
-```
 
 The project will run continuously until the user performs a manual kill command by typing control C (^C) in the terminal where these launch files were executed.
 
