@@ -37948,3 +37948,93 @@
 2024-12-17 15:52:10,707 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
 2024-12-17 15:52:10,707 - INFO - Modified the model's box predictor to accommodate the new number of classes.
 2024-12-17 15:52:10,919 - INFO - Real-time detection ended.
+2024-12-19 15:15:40,531 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:15:40,532 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:15:40,974 - INFO - Real-time detection ended.
+2024-12-19 15:17:29,091 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:17:29,091 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:17:29,291 - INFO - Real-time detection ended.
+2024-12-19 15:18:48,997 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:18:48,998 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:18:49,204 - INFO - Real-time detection ended.
+2024-12-19 15:22:17,471 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:22:17,471 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:22:17,877 - INFO - Real-time detection ended.
+2024-12-19 15:23:40,321 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:23:40,321 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:23:40,557 - INFO - Real-time detection ended.
+2024-12-19 15:25:15,599 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:25:15,599 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:25:15,874 - INFO - Real-time detection ended.
+2024-12-19 15:25:59,187 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:25:59,187 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:25:59,564 - INFO - Real-time detection ended.
+2024-12-19 15:27:42,857 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:27:42,857 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:27:43,129 - INFO - Real-time detection ended.
+2024-12-19 15:29:35,993 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:29:35,993 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:29:36,309 - INFO - Real-time detection ended.
+2024-12-19 15:34:03,001 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:34:03,001 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:34:03,121 - INFO - Real-time detection ended.
+2024-12-19 15:35:44,701 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:35:44,702 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:35:44,871 - INFO - Real-time detection ended.
+2024-12-19 15:39:33,093 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:39:33,093 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:39:33,322 - INFO - Real-time detection ended.
+2024-12-19 15:40:11,897 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:40:11,897 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:40:12,082 - INFO - Real-time detection ended.
+2024-12-19 15:42:17,709 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:42:17,709 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:42:17,836 - INFO - Real-time detection ended.
+2024-12-19 15:48:59,907 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:48:59,908 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:49:00,188 - INFO - Real-time detection ended.
+2024-12-19 15:49:10,104 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:49:10,104 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:49:10,443 - INFO - Real-time detection ended.
+2024-12-19 15:49:19,917 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:49:19,917 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:49:20,117 - INFO - Real-time detection ended.
+2024-12-19 15:49:20,662 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:49:20,662 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:49:21,084 - INFO - Real-time detection ended.
+2024-12-19 15:49:21,222 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:49:21,222 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:49:21,457 - INFO - Real-time detection ended.
+2024-12-19 15:52:07,042 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:52:07,042 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:52:07,363 - INFO - Real-time detection ended.
+2024-12-19 15:52:16,579 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:52:16,580 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:52:16,999 - INFO - Real-time detection ended.
+2024-12-19 15:52:25,974 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:52:25,975 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:52:26,349 - INFO - Real-time detection ended.
+2024-12-19 15:52:33,352 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:52:33,352 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:52:33,643 - INFO - Real-time detection ended.
+2024-12-19 15:52:33,779 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:52:33,779 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:52:34,020 - INFO - Real-time detection ended.
+2024-12-19 15:59:05,077 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:59:05,077 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:59:05,381 - INFO - Real-time detection ended.
+2024-12-19 15:59:48,805 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:59:48,806 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:59:48,987 - INFO - Real-time detection ended.
+2024-12-19 15:59:58,208 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:59:58,208 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:59:58,419 - INFO - Real-time detection ended.
+2024-12-19 15:59:58,883 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 15:59:58,883 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 15:59:59,073 - INFO - Real-time detection ended.
+2024-12-19 16:00:07,208 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 16:00:07,208 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 16:00:07,402 - INFO - Real-time detection ended.
+2024-12-19 16:00:07,543 - INFO - Initialized Faster R-CNN model with MobileNetV3 backbone.
+2024-12-19 16:00:07,543 - INFO - Modified the model's box predictor to accommodate the new number of classes.
+2024-12-19 16:00:07,746 - INFO - Real-time detection ended.

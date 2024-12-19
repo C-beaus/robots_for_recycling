@@ -94,8 +94,13 @@ class GantryControl:
             8: -8000,
             9: -9000
         }
+        self.pubHomeStatus = rospy.Subscriber('master/homeStatus', Bool, self.home_status_callback)
+        self.is_homing_done = False # If the homing process is done
+
+        self.pneumatic_gripper(False)
 
         rospy.loginfo("gantry_control - Gantry to Home")
+        rospy.sleep(1)
         self.callbackHome()
 
         # Set global distance information
@@ -105,8 +110,8 @@ class GantryControl:
         self.s = rospy.Service('get_plucked', GantrySrv, self.receive_data) 
         rospy.loginfo(f'Gantry Node Ready.')
 
-        self.is_homing_done = False # If the homing process is done
-        self.pubHomeStatus = rospy.Subscriber('master/homeStatus', Bool, self.home_status_callback)
+        # self.is_homing_done = False # If the homing process is done
+        # self.pubHomeStatus = rospy.Subscriber('master/homeStatus', Bool, self.home_status_callback)
 
         
     def callback(self, msg):
@@ -211,7 +216,8 @@ class GantryControl:
         if value == 0:
             target_Z = -500
         target_Z = value*-1000
-        while self.currentZ != int(target_Z): 
+        while abs(self.currentZ - int(target_Z)) > 100:
+        # while self.currentZ != int(target_Z): 
             rospy.loginfo(f"Gantry - Set Z: {value}, Current Z: {self.currentZ}, Target Z : {target_Z}")
             rospy.sleep(1)
         rospy.loginfo("Gantry Z-direction complete")
@@ -352,9 +358,9 @@ class GantryControl:
         Main gantry function to work through the process of picking up an object and placing it in the correct location.
         '''
       # extrast grasp pose
-        sucPose = req.grasps.data # [[x, y, z, label], .....]
+        sucPose = np.asarray(req.grasps.data) # [[x, y, z, label], .....]
         rospy.loginfo("gantry_control - START")
-        rospy.loginfo("gantry_control - sucPose:",sucPose)
+        rospy.loginfo(f"gantry_control - sucPose: {sucPose}")
 
         reshaped = sucPose.reshape(-1, 4)
 
@@ -365,13 +371,13 @@ class GantryControl:
         # rospy.sleep(3)
 
         # Sort reshaped list by y value to ensure closest item to cartesian robot is first in the list
-        sorted_list = sorted(reshaped, key=lambda x: x[1])
-        rospy.loginfo("gantry_control - sorted_list:",sorted_list)
+        sorted_list = sorted(reshaped, key=lambda x: x[1], reverse=True)
+        rospy.loginfo(f"gantry_control - sorted_list: {sorted_list}")
 
         for grasp_pose in sorted_list:
-            rospy.loginfo("gantry_control - grasp_pose:",grasp_pose)
+            rospy.loginfo(f"gantry_control - grasp_pose: {grasp_pose}")
           # convert grasp pose from camera frame to gantry frame (NOTE: Converts from meters to inches. TODO: Change from inches to meters)
-            gantryPose = self.convert_cam2gantryPose(sucPose)
+            gantryPose = self.convert_cam2gantryPose(grasp_pose)
           # truncate pose values to three decimal places
             gantryPose = [self.truncate_to_three_decimal_places(value) for value in gantryPose]
         # # send gantry home (required on startup) NOTE: move this to startup
@@ -381,9 +387,18 @@ class GantryControl:
         #     rospy.sleep(3)
         # use y value for conveyor control - send item from camera view to gantry alignment
             # TODO: implement conveyor control
+
+
             rospy.loginfo("gantry_control - Moving conveyor")
-            self.move_conveyor(gantryPose[1] - self.conveyor_dist)
-            self.conveyor_dist += (gantryPose[1] - self.conveyor_dist)
+            if not self.conveyor_dist == 0:
+                self.move_conveyor(gantryPose[1] - self.conveyor_dist + 6.5) 
+                self.conveyor_dist += (gantryPose[1] - self.conveyor_dist)   
+            else:
+                self.move_conveyor(gantryPose[1] - self.conveyor_dist)
+                self.conveyor_dist += (gantryPose[1] - self.conveyor_dist)
+
+
+
           # use x value of gantry alignment on conveyor
             rospy.loginfo(f"gantry_control - Gantry to X: {gantryPose[0]}")
             self.setXposition(gantryPose[0])
@@ -416,6 +431,8 @@ class GantryControl:
         self.conveyor_dist = 0
 
         rospy.loginfo("gantry_control - Done")
+
+        self.callbackHome()
 
         # Generate response
         # response = SuctionSrvResponse()

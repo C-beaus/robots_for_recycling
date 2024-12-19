@@ -15,7 +15,6 @@ class SuctionGeneratorFast:
         self.belt_depth = belt_depth # this is in the camera frame
         self.belt_points_margin = 0.005
         self.thin_thresold = 0.05 # Consider object thin if surface is only 0.05 cm above belt surface
-        self.dist_image_edge_to_gantry = None
     
     def remove_belt_points(self, depth):
 
@@ -219,15 +218,12 @@ class SuctionGeneratorFast:
                 x = ((x_center - 321.1669921875)/ 605.622314453125 )* z
                 y = ((y_center - 231.57203674316406)/ 605.8401489257812 )* z
                 point = np.array([x, y, z, 1])
-                dist_to_img_edge = depth.shape[1] - y_center    # In pixels
-                dist_to_img_edge = (dist_to_img_edge / 605.8401489257812)*z
-                dist_to_gantry = self.dist_image_edge_to_gantry + dist_to_img_edge
 
             else:
                 return None
 
             transformed_point = self.cam2robot @ point
-            grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], dist_to_gantry, label])
+            grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
             points.append(grasp_point)
 
             # sphere_radius = 0.005 # meters

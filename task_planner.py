@@ -4,7 +4,7 @@
 import rospy
 from std_msgs.msg import Float64, Float64MultiArray
 import argparse
-from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, SuctionSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest, SuctionSrvRequest, PandaSrv, PandaSrvRequest
+from robots_for_recycling.srv import ClassifySrv, GraspSrv, CameraSrv, rgbdSrv, SuctionSrv, rgbdSrvRequest, GraspSrvRequest, ClassifySrvRequest, SuctionSrvRequest, PandaSrv, PandaSrvRequest, GantrySrv, GantrySrvRequest
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -43,6 +43,7 @@ class TaskPlanner:
             self.objects_we_tried = []
 
             self.run_franka()
+            # self.run_cartesian()
 
             rospy.on_shutdown(self.shutdown)
         
@@ -143,11 +144,11 @@ class TaskPlanner:
         # Wait for the service to become available
         rospy.wait_for_service('get_plucked')
         try:
-            gantry_control = rospy.ServiceProxy('gantry_control', GantrySrv)
+            gantry_control = rospy.ServiceProxy('get_plucked', GantrySrv)
             request = GantrySrvRequest()
             request.grasps.data = grasps
             response = gantry_control(request)
-            return NotImplementedError
+            return response
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to gantry control service failed: {e}")
     
@@ -355,7 +356,7 @@ class TaskPlanner:
 
                 # Otherwise compare tolerance between x and y points of grasp to current values in list
                 else:
-                    tolerance = 0.03
+                    tolerance = 0.01 #0.03
                     for grasp in grasps_reshaped:
                         if all(abs(x[0] - grasp[0]) > tolerance and abs(x[1] - grasp[1]) > tolerance for x in self.objects_we_tried):
                             self.objects_in_frame.append(grasp.tolist())
@@ -430,13 +431,16 @@ class TaskPlanner:
                 print("attempting gantry")
                 gantry_plucked = self.call_cartesian_robot_service(suction_grasps)
 
+                # self.run_franka()
+                print("Done with cartesian")
+
             else:
                 rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
                 return
 
             # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
             # The current grasps are computed at the object, so they need a little offset to not collide with the object.
-            self.call_cartesian_robot_service(suction_grasps)
+            # self.call_cartesian_robot_service(suction_grasps)
 
         except Exception as e:
             rospy.logerr(f"Error running run_cartesian callback: {e}")
