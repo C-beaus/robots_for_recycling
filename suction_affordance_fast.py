@@ -220,8 +220,8 @@ class SuctionGeneratorFast:
                 point = np.array([x, y, z, 1])
 
             else:
-                return None
-
+                continue
+            
             transformed_point = self.cam2robot @ point
             grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
             points.append(grasp_point)

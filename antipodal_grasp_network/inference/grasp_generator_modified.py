@@ -91,7 +91,7 @@ class GraspGenerator:
 
         return q_img, ang_img, width_img
     
-    def find_nearest_valid_depth(depth_img, target_point):
+    def find_nearest_valid_depth(self, depth_img, target_point):
 
         valid_mask = depth_img > 0
         _ , indices = distance_transform_edt(~valid_mask, return_indices=True)
@@ -125,7 +125,7 @@ class GraspGenerator:
             # TESTING UPDATE WIDTH
             grasps[i].width = np.multiply(grasps[i].width, pos_z / fx)
 
-            grasp_object_params.extend([grasps[i].center, grasps[i].angle, grasps[i].width, grasps[i].length])
+            grasp_object_params.append([grasps[i].center[0], grasps[i].center[1], grasps[i].angle, grasps[i].width, grasps[i].length])
 
             if pos_z == 0:
                 print("Invalid Depth Found")
@@ -147,5 +147,5 @@ class GraspGenerator:
             grasp_pose = np.append(grasp_pose, grasps[i].width)
             grasp_pose = np.append(grasp_pose, labels[i])
             metric_grasp_poses.append(grasp_pose)
-            
-        return metric_grasp_poses, np.array(grasp_object_params)
+            flat_grasp_obj_params = np.array(grasp_object_params).flatten()
+        return metric_grasp_poses, flat_grasp_obj_params
