@@ -91,6 +91,6 @@ def run_inference(generator=None, color_image=None, depth_image=None, use_cam=Fa
     # Depth scale already multiplied if image came from camera node
     color_image, depth_image =  process_frames(color_image, depth_image)
 
-    q_img, ang_img, width_img = generator.infer_from_model(depth=depth_image, rgb=color_image)
+    q_img, ang_img, width_img = generator.infer_from_model(depth=depth_image, rgb=color_image, filter_q_img=False)
        
     return q_img, ang_img, width_img

@@ -11,10 +11,10 @@ import moveit_commander
 import tf.transformations as tr
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose
-from franka_gripper.msg import GraspActionGoal
 import os
 from panda_hw.srv import PandaSrv, PandaSrvResponse
 import os
+from franka_gripper.msg import GraspActionGoal
 from scipy.spatial.transform import Rotation as R
 import quaternion
 
@@ -39,6 +39,7 @@ class PandaControl():
 
         # moveit_commander.
         moveit_commander.roscpp_initialize(sys.argv)
+        self.grasp_pub = rospy.Publisher('/franka_gripper/grasp/goal', GraspActionGoal, queue_size=1) 
         # rospy.init_node('panda_traj_node',
         #                 anonymous=True)
         self.robot = moveit_commander.RobotCommander()
@@ -59,7 +60,10 @@ class PandaControl():
         self.add_side_wall1()
         self.add_side_wall2()
         self.set_def_pos() # Move the robot to home configuartion
+        # self.grasp(OPEN)
         self.grasp(OPEN)
+        # rospy.sleep(5)
+        # self.grasp(CLOSE)
         print("here")
 
         self.home_quat = np.quaternion(0.9236308294044129, -0.3832040671747972, 0.0034829607401068493, 0.006971575065411934)
@@ -68,7 +72,7 @@ class PandaControl():
         self.plastic_location = np.array([0.00, -0.3, 0.500, 0.008760752531346035])
         self.cardboard_location = np.array([0.00, 0.3, 0.500, 0.008760752531346035])
         #TODO: Implement locations for the other 3 classes
-        self.grasp_pub = rospy.Publisher('/franka_gripper/grasp/goal', GraspActionGoal, queue_size=1) 
+       
         self.s = rospy.Service("panda_control", PandaSrv, self.main)
 
     def move_joint(self, goalConf):
@@ -141,7 +145,12 @@ class PandaControl():
         wpose.position.z = posStart[2]
 
 
-        T = np.array([[1, 0, 0, 0.5052], [0, -1, 0, 0.0872], [0, 0, -1, 1.0007], [0, 0, 0, 1]])
+        # T = np.array([[1, 0, 0, 0.5052], [0, -1, 0, 0.0872], [0, 0, -1, 1.0007], [0, 0, 0, 1]])
+        # T = np.array([[-0.07870932,  0.97962212, -0.18478459,  0.42135239,], [0.99158377,  0.09604609,  0.08681456,  0.1636242], [0.10279331, -0.17639629, -0.97893712,  3.49994303], [0, 0, 0, 1]])
+        # T = np.array([[-0.15221508, -0.08804008,  0.98441836,  0.22514847], [ 0.96842411 ,-0.21226639 , 0.13075823,  0.14772686], [ 0.19744697,  0.97323786,  0.11757028,  3.06855021], [ 0, 0, 0, 1]])
+        # T = np.array([[ 0.98154611, 0.06768895, 0.17884473, 0.02177584],[ 0.06980418,-0.99754525,-0.00555361, 0.24988011],[ 0.17802979, 0.01793524,-0.98386164, 3.60822785],[ 0.        , 0.        , 0.        , 1.        ]])
+        # T = np.array([[ 0.96692704, 0.02153965, 0.25414199, 0.42230082],[ 0.0459101 ,-0.99485087,-0.09035491, 0.12896164],[ 0.25088717, 0.09903429,-0.96293709, 0.90417563],[ 0.        , 0.        , 0.        , 1.        ]])
+        T = np.array([[ 1, 0, 0, 0.42230082],[ 0 ,-1,0, 0.12896164],[ 0, 0,-1, 0.90417563],[ 0.        , 0.        , 0.        , 1.        ]])
         print(f"target angle before: {posStart[3]}")
 
         R_cam2base = T[:3, :3]
@@ -415,8 +424,8 @@ class PandaControl():
         grasp_data.goal.epsilon.outer = 0.5
 
         self.grasp_pub.publish(grasp_data)
+        rospy.sleep(0.5)
 
-        return grasp_data
     def run(self):
         try:
             rospy.spin()
@@ -430,8 +439,8 @@ class PandaControl():
         grasp = msg.grasps.data
         print(f"grasps received {grasp}")
 
-        width_offset = 0.001 # to subtract from gripper width
-        height_offset = 0.1 # to add to robot z height
+        width_offset = 0.005 # to subtract from gripper width
+        height_offset = 0.09 # to add to robot z height
 
         # ppx=321.1669921875
         # ppy=231.57203674316406
@@ -477,18 +486,26 @@ class PandaControl():
                 self.execute_traj_start(within_gripper)
 
                 # close the gripper around the object
-                # self.set_gripper_distance(width_in_meters - width_offset)
                 self.grasp(width_in_meters - width_offset)
 
                 # move back to above object                
                 print("Moving to Above location")
                 self.execute_traj_start(start)
 
+                # move to home configuration
+                print("Moving to home")
+                waypoint = np.array([0.5, -0.3, 0.500, 0.008760752531346035])
+                self.execute_traj_start(waypoint)
+
                 # create switch statement for which location to go to based on the label we are receiving
                 self.execute_traj_start(self.plastic_location)
 
                 # open gripper
                 self.grasp(OPEN)
+
+                # Move back to home
+                print("Moving to home")
+                self.set_def_pos()
 
                 response = PandaSrvResponse()
                 response.flag.data = 1
