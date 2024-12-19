@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import cv2
-
+from scipy.ndimage import distance_transform_edt
 from hardware.camera import RealSenseCamera
 from hardware.device import get_device
 from inference.post_process import post_process_output
@@ -73,8 +73,10 @@ class GraspGenerator:
 
         return grasps, labels
             
-    def infer_from_model(self, depth, rgb):
+    def infer_from_model(self, depth, rgb, filter_q_img=False):
         
+        self.filter_q_img = filter_q_img
+
         x, _, _ = self.cam_data.get_data(rgb=rgb, depth=depth)
 
         # Predict the grasp pose using the saved model
@@ -83,27 +85,47 @@ class GraspGenerator:
             pred = self.model.predict(xc)
 
         q_img, ang_img, width_img = post_process_output(pred['pos'], pred['cos'], pred['sin'], pred['width'])
-        q_img = np.where(np.squeeze(depth, axis=2)==0, 0, q_img)
+
+        if self.filter_q_img:
+            q_img = np.where(np.squeeze(depth, axis=2)==0, 0, q_img) # only keep quality score for pixels for which depth is available
 
         return q_img, ang_img, width_img
+    
+    def find_nearest_valid_depth(depth_img, target_point):
+
+        valid_mask = depth_img > 0
+        _ , indices = distance_transform_edt(~valid_mask, return_indices=True)
+        nearest_row, nearest_col = indices[:, target_point[0], target_point[1]]
+        depth = depth_img[nearest_row, nearest_col]
+        return depth
 
     def generate_poses(self, q_img, ang_img, width_img, depth, bboxes, camera2robot=np.eye(4), ppx=321.1669921875, ppy=231.57203674316406, 
                  fx=605.622314453125, fy=605.8401489257812): # Currently runs inference on entire image instead of each individual bounnding boxes
 
         grasps, labels = self.detect_grasps_bboxes(bboxes, q_img, ang_img, width_img)
 
-        grasp_poses = []
+        grasp_object_params = []
+        metric_grasp_poses = []
 
         for i in range(len(grasps)):
 
+            grasp_depth = depth[grasps[i].center[0], grasps[i].center[1]]
             # Get grasp position from model output
-            pos_z = depth[grasps[i].center[0], grasps[i].center[1]]
+            if self.filter_q_img or grasp_depth != 0: # check if valid depth at pixel exists (valid depth will 
+                                                        #always exist if you filter q_img based on valid depths
+                                                        #already)
+                pos_z = grasp_depth
+            else:   # otherwise assigned nearest valid depth
+                pos_z = self.find_nearest_valid_depth(depth, grasps[i].center)
+
             pos_x = np.multiply(grasps[i].center[1] - ppx,
                                 pos_z / fx)
             pos_y = np.multiply(grasps[i].center[0] - ppy,
                                 pos_z / fy)
             # TESTING UPDATE WIDTH
             grasps[i].width = np.multiply(grasps[i].width, pos_z / fx)
+
+            grasp_object_params.extend([grasps[i].center, grasps[i].angle, grasps[i].width, grasps[i].length])
 
             if pos_z == 0:
                 print("Invalid Depth Found")
@@ -124,6 +146,6 @@ class GraspGenerator:
             grasp_pose = np.append(target_position, target_angle[2])
             grasp_pose = np.append(grasp_pose, grasps[i].width)
             grasp_pose = np.append(grasp_pose, labels[i])
-            grasp_poses.append(grasp_pose)
+            metric_grasp_poses.append(grasp_pose)
             
-        return grasp_poses
+        return metric_grasp_poses, np.array(grasp_object_params)
