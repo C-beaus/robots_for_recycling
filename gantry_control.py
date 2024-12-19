@@ -56,7 +56,7 @@ class GantryControl:
         self.cam2gantryHome_y = 0.955  # [meters]
         self.cam2gantryHome_z = -0.620 # [meters]
 
-        self.conveyor_speed = 10  # Default speed in... [cm/s]???
+        self.conveyor_speed = 30  # Default speed in... [cm/s]???
 
         self.z_component_threshold = 0.8 # For surface normals.
         
@@ -240,8 +240,8 @@ class GantryControl:
 
             # Publish the speed to the main conveyor
             self.pubSetConveyor2.publish(main_speed_msg)
-            if main_speed_msg != 0:
-                rospy.sleep(1)
+            # if main_speed_msg != 0:
+            #     rospy.sleep(1)
             # self.pubConveySpeed.publish(main_speed_msg)
 
             # Log the result
@@ -288,7 +288,7 @@ class GantryControl:
         speed = direction * abs(self.conveyor_speed)
 
         # Calculate time required
-        travel_time = abs(distance_in_inches) / abs(self.conveyor_speed/5)
+        travel_time = abs(distance_in_inches) / abs(self.conveyor_speed/5.1)
 
         rospy.loginfo(f"Moving conveyor {distance_in_inches} inches at {speed} inches/sec for {travel_time:.2f} seconds.")
 
@@ -352,8 +352,8 @@ class GantryControl:
       # send gantry home (required on startup) NOTE: move this to startup
         rospy.loginfo("gantry_control - Gantry to Home")
         self.callbackHome()
-        rospy.loginfo("SLEEP 5") #temporary
-        rospy.sleep(5)
+        rospy.loginfo("SLEEP 3") #temporary
+        rospy.sleep(3)
       # use y value for conveyor control - send item from camera view to gantry alignment
         # TODO: implement conveyor control
         rospy.loginfo("Moving conveyor")
@@ -361,27 +361,27 @@ class GantryControl:
         # use x value of gantry alignment on conveyor
         rospy.loginfo(f"gantry_control - Gantry to X: {gantryPose[0]}")
         self.setXposition(gantryPose[0])
-        # use z value for depth
-        rospy.loginfo(f"gantry_control - Gantry to Z: {gantryPose[2]}")
-        self.setZposition(gantryPose[2])
-        # turn on suction
-        rospy.loginfo("gantry_control - Pneumatic gripper On")
-        self.pneumatic_gripper(True)
-        # raise end effector up to z=1
-        rospy.loginfo("gantry_control - Gantry to Z: 1")
-        self.setZposition(1)
-        # TODO: decide where to put material (left or right). Handle label here?
-        if gantryPose[3] == 0:
-            # move to the right
-            rospy.loginfo("gantry_control - Right Chosen")
-            self.setXposition(60)
-        else:
-            # move to the left
-            rospy.loginfo("gantry_control - Left Chosen")
-            self.setXposition(1)
-        # turn off suction
-        rospy.loginfo("gantry_control - Pneumatic gripper Off")
-        self.pneumatic_gripper(False)
+        # use z /value for depth
+        # rospy.loginfo(f"gantry_control - Gantry to Z: {gantryPose[2]}")
+        # self.setZposition(gantryPose[2])
+        # # turn on suction
+        # rospy.loginfo("gantry_control - Pneumatic gripper On")
+        # self.pneumatic_gripper(True)
+        # # raise end effector up to z=1
+        # rospy.loginfo("gantry_control - Gantry to Z: 1")
+        # self.setZposition(1)
+        # # TODO: decide where to put material (left or right). Handle label here?
+        # if gantryPose[3] == 0:
+        #     # move to the right
+        #     rospy.loginfo("gantry_control - Right Chosen")
+        #     self.setXposition(60)
+        # else:
+        #     # move to the left
+        #     rospy.loginfo("gantry_control - Left Chosen")
+        #     self.setXposition(1)
+        # # turn off suction
+        # rospy.loginfo("gantry_control - Pneumatic gripper Off")
+        # self.pneumatic_gripper(False)
         rospy.loginfo("gantry_control - Done")
 
         # Generate response
