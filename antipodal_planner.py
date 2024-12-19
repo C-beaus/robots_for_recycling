@@ -13,6 +13,7 @@ from inference.grasp_generator_modified import GraspGenerator
 import numpy as np
 from robots_for_recycling.srv import GraspSrv, rgbdSrv, GraspSrvResponse, rgbdSrvResponse
 from cv_bridge import CvBridge
+import cv2
 
 """
 This class handles translating bounding boxes for use by the manipulation team
@@ -28,6 +29,8 @@ class AntipodalPlanner:
 
         self.grasp_generation_service = rospy.Service('run_grasp_model', rgbdSrv, self.run_grasp_inference)
         self.grasp_selection_service = rospy.Service('select_grasps_from_bbs', GraspSrv, self.select_bbs_grasps)
+        self.grasp_pub_for_viz = rospy.Publisher('/visualization_grasps', Float64MultiArray, queue_size=10)
+        self.img_pub_for_viz = rospy.Publisher('/visualization_images', Float64MultiArray, queue_size=10)
 
         # Create subscriber
         rospack = rospkg.RosPack()
@@ -63,14 +66,22 @@ class AntipodalPlanner:
 
     def generatePose(self):
 
-        grasp_poses = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
+        metric_grasp_poses, grasp_params_for_viz = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
                                                 bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
                                                 fx=605.622314453125, fy=605.8401489257812)
-        grasp_poses = np.array(grasp_poses, dtype=np.float64)
-        flattened_grasp_poses = grasp_poses.flatten()
+        metric_grasp_poses = np.array(metric_grasp_poses, dtype=np.float64)
+        flattened_grasp_poses = metric_grasp_poses.flatten()
 
-        rospy.loginfo(f'Grasp poses: {grasp_poses}')
+        rospy.loginfo(f'Grasp poses: {metric_grasp_poses}')
 
+        img_gray = cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY)
+        grasp_msg = Float64MultiArray()
+        img_msg = Float64MultiArray()
+        img_msg.data = img_gray.flatten()
+        grasp_msg.data = grasp_params_for_viz
+        self.grasp_pub_for_viz.publish(grasp_msg)
+        self.img_pub_for_viz.publish(img_msg)
+        
         return flattened_grasp_poses
 
     def select_bbs_grasps(self, req):
