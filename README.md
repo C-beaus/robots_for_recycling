@@ -1,99 +1,38 @@
+# WPI RBE 595 Autonomous Recycling
 
-# Waste Sorting Model with Faster R-CNN
+This repository contains an implementation of autonomous robotic recyling using a conveyor belt system and two robotic arms. Various grippers can be attached to both arms for better grasping of certain waste. The project contains a classification model to identify and sort waste into five classes, including **cardboard**, **glass**, **metal**, **paper**, and **plastic**. More information about the classification implementation can be found in the *README_classification.md* file in this repository.
 
-This repository contains two scripts, `train.py` and `infer.py`, for training and inference of a waste sorting model based on Faster R-CNN with MobileNetV3 backbone. This model can be fine-tuned to detect five classes: **cardboard**, **glass**, **metal**, **paper**, and **plastic** objects in images.
-
-## Files in This Repository
-
-1. **train.py**: This script trains a Faster R-CNN model using a custom dataset and logs training progress. The model is saved to `fasterrcnn_model.pth` for later use in inference.
-2. **infer.py**: This script loads the trained model, performs inference on a provided image, and displays detected bounding boxes with class names and confidence scores.
-
-## Requirements
-
-Install the dependencies with:
-```bash
-pip install -r requirements_38.txt 
-```
-
-## Dataset Structure
-
-Your dataset should be structured as follows:
-```
-dataset/
-├── train/
-│   ├── images/
-│   ├── labels/
-```
-
-- **images/**: Contains `.jpg` images.
-- **labels/**: Contains corresponding `.txt` files for bounding box annotations. Each `.txt` file should contain lines with:
-  ```
-  <class_id> <center_x> <center_y> <width> <height>
-  ```
-  All values are normalized between 0 and 1.
+Once waste items are classified, we identify grasps on each waste object and attempt to execute each grasp with a *PANDA* robotic arm. The robotic arm will then attempt to properly sort each waste item by its class (identified with the classification model). Any waste item the arm can not pick up will be filtered after attempted execution. Once the arm has attempted to grasp all waste items in the camera frame, the remaining waste items will be processed by the cartesian robot. Any waste that the cartesian robot can not grasp will be deemed unsortable by the current system and moved into a **miscellaneous** group by running off the end of the conveyor belt.
 
 ## Usage
-publish any float  to [THIS SPECIFIC ROSTOPIC] to start the classification loop
 
-### Training
-
-To train the model, simply run:
-```bash
-python train.py
+To run the code, first clone this repository into the src folder of your catkin workspace (ensure you are using ROS1). Next, create a virtual environment in the workspace running **python 3.8.10**. Activate the virtual environment in the command line and run the following command to install the required packages: 
 ```
-- The model will be saved as `fasterrcnn_model.pth` in the root directory.
-- Logs will be saved to `train.log`.
-
-### Inference
-
-To perform inference on an image, use:
-```bash
-python infer.py <image_path>
+"pip install -r requirements.txt"
 ```
-- Replace `<image_path>` with the path to your image file.
-- A window will display the image with detected objects, showing bounding boxes and confidence scores.
-- Logs will be saved to `infer.log`.
 
-### Classes
+To start the PANDA nodes, open a new terminal and navigate to the "panda_recycling" workspace. Catkin make and source this workspace, then run the following in the command line to launch all necessary nodes in the project. Make sure you are holding the deadman switch before running the following command: 
+```
+"roslaunch panda_hw start_hw_robot.launch" 
+```
+Then, open a new terminal, cd into the panda_recycling workspace, catkin make and source the workspace, and run the following in the commane line:
+```
+"rosrun panda_hw panda_control_595.py"
+```
 
-The model is trained to detect the following classes:
-1. **recycling**
-2. **nonrecycling**
+Once the PANDA nodes are initialized, you can launch the rest of the code. Open a new terminal and navigate to the catkin workspace where the robots_for_recycling package is located. Catkin make and source this workspace by running the following: 
+```
+"catkin_make"
+``` 
+```
+"source devel/setup.bash"
+```
+Next, run the following command to launch all necessary nodes in the project: 
+```
+roslaunch robots_for_recycling start.launch"
+```
 
-Note: Background is considered as a separate class internally but is not labeled in the output.
 
-## Scripts Overview
+The project will run continuously until the user performs a manual kill command by typing control C (^C) in the terminal where these launch files were executed.
 
-### train.py
 
-- **Dataset Class**: The `WasteDataset` class loads images and their corresponding labels.
-- **Transforms**: Images are transformed to tensors using `transforms.Compose([transforms.ToTensor()])`.
-- **Model Initialization**: A pre-trained Faster R-CNN with a MobileNetV3 backbone is fine-tuned for our classes.
-- **Training Loop**: The model is trained over epochs, and each epoch’s loss is logged to `train.log`.
-- **Save Model**: The model is saved to `fasterrcnn_model.pth` after training completion.
-
-### infer.py
-
-- **Load Model**: The trained model is loaded from `fasterrcnn_model.pth`.
-- **Image Processing**: Each image is transformed and fed to the model for inference.
-- **Bounding Box Visualization**: Detected objects are visualized with bounding boxes, class names, and confidence scores.
-- **Logging**: Each detection's details are logged to `infer.log`.
-
-## Logging
-
-Both `train.py` and `infer.py` scripts log messages to console and file:
-- **train.log**: Logs details of the training process.
-- **infer.log**: Logs details of the inference process, including any errors or detected objects.
-
-## Model
-
-The model is based on **Faster R-CNN with MobileNetV3** backbone, allowing lightweight and efficient training and inference on CPUs.
-
-## Notes
-
-- Adjust `train.py` hyperparameters as needed.
-- Ensure dataset structure aligns with the specified format.
-
-## Acknowledgments
-
-This repository was developed as part of the **Waste Sorting Project** to efficiently classify recycling and non-recycling items.# waste_classification
