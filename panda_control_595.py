@@ -11,6 +11,7 @@ import moveit_commander
 import tf.transformations as tr
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose
+from franka_gripper.msg import GraspActionGoal
 import os
 from panda_hw.srv import PandaSrv, PandaSrvResponse
 import os
@@ -58,7 +59,7 @@ class PandaControl():
         self.add_side_wall1()
         self.add_side_wall2()
         self.set_def_pos() # Move the robot to home configuartion
-        self.set_gripper_distance(OPEN)
+        self.grasp(OPEN)
         print("here")
 
         self.home_quat = np.quaternion(0.9236308294044129, -0.3832040671747972, 0.0034829607401068493, 0.006971575065411934)
@@ -67,7 +68,7 @@ class PandaControl():
         self.plastic_location = np.array([0.00, -0.3, 0.500, 0.008760752531346035])
         self.cardboard_location = np.array([0.00, 0.3, 0.500, 0.008760752531346035])
         #TODO: Implement locations for the other 3 classes
-
+        self.grasp_pub = rospy.Publisher('/franka_gripper/grasp/goal', GraspActionGoal, queue_size=1) 
         self.s = rospy.Service("panda_control", PandaSrv, self.main)
 
     def move_joint(self, goalConf):
@@ -377,16 +378,16 @@ class PandaControl():
         return True
 
 
-    def set_gripper_distance(self, target_distance):
+    # def set_gripper_distance(self, target_distance):
 
-        try:
-            joint_value = target_distance / 2  # For symmetric grippers, each finger moves half the distance
-            self.gripper.set_joint_value_target([joint_value, joint_value])  # Set both finger joints
-            self.gripper.go(wait=True)
-        except:
-            print("gripper traj failed")
+    #     try:
+    #         joint_value = target_distance / 2  # For symmetric grippers, each finger moves half the distance
+    #         self.gripper.set_joint_value_target([joint_value, joint_value])  # Set both finger joints
+    #         self.gripper.go(wait=True)
+    #     except:
+    #         print("gripper traj failed")
 
-        return True
+    #     return True
     
     def move_to_camera_coordinates(self, x, y, z, theta):
         xyzArray = np.array([x, y, z, theta])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
@@ -398,12 +399,24 @@ class PandaControl():
     def move_to_home(self):
         self.set_def_pos()
         
-    def closeGripper(self, width = -1):
-        self.set_gripper_distance(CLOSE if width == -1 else width)
+    # def closeGripper(self, width = -1):
+    #     self.set_gripper_distance(CLOSE if width == -1 else width)
         
-    def openGripper(self):
-        self.set_gripper_distance(OPEN)
+    # def openGripper(self):
+    #     self.set_gripper_distance(OPEN)
 
+    def grasp(self, width):
+
+        grasp_data = GraspActionGoal()
+        grasp_data.goal.width = width
+        grasp_data.goal.force = 0.7
+        grasp_data.goal.speed = 0.2
+        grasp_data.goal.epsilon.inner = 0.5
+        grasp_data.goal.epsilon.outer = 0.5
+
+        self.grasp_pub.publish(grasp_data)
+
+        return grasp_data
     def run(self):
         try:
             rospy.spin()
@@ -465,6 +478,7 @@ class PandaControl():
 
                 # close the gripper around the object
                 # self.set_gripper_distance(width_in_meters - width_offset)
+                self.grasp(width_in_meters - width_offset)
 
                 # move back to above object                
                 print("Moving to Above location")
@@ -474,7 +488,7 @@ class PandaControl():
                 self.execute_traj_start(self.plastic_location)
 
                 # open gripper
-                self.set_gripper_distance(OPEN)
+                self.grasp(OPEN)
 
                 response = PandaSrvResponse()
                 response.flag.data = 1
