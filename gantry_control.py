@@ -353,6 +353,8 @@ class GantryControl:
         '''
       # extrast grasp pose
         sucPose = req.grasps.data # [[x, y, z, label], .....]
+        rospy.loginfo("gantry_control - START")
+        rospy.loginfo("gantry_control - sucPose:",sucPose)
 
         reshaped = sucPose.reshape(-1, 4)
 
@@ -364,6 +366,7 @@ class GantryControl:
 
         # Sort reshaped list by y value to ensure closest item to cartesian robot is first in the list
         sorted_list = sorted(reshaped, key=lambda x: x[1])
+        rospy.loginfo("gantry_control - sorted_list:",sorted_list)
 
         for grasp_pose in sorted_list:
             rospy.loginfo("gantry_control - grasp_pose:",grasp_pose)
@@ -378,7 +381,7 @@ class GantryControl:
         #     rospy.sleep(3)
         # use y value for conveyor control - send item from camera view to gantry alignment
             # TODO: implement conveyor control
-            rospy.loginfo("Moving conveyor")
+            rospy.loginfo("gantry_control - Moving conveyor")
             self.move_conveyor(gantryPose[1] - self.conveyor_dist)
             self.conveyor_dist += (gantryPose[1] - self.conveyor_dist)
           # use x value of gantry alignment on conveyor
@@ -394,7 +397,7 @@ class GantryControl:
             rospy.loginfo("gantry_control - Gantry to Z: 1")
             self.setZposition(1)
             # TODO: decide where to put material (left or right). Handle label here?
-            # 0-2: left (closer to PC), 4-6: right
+            # 0, 1, 4: left (closer to PC); 2, 4, else: right
             if gantryPose[3] == 0 or 1 or 4: # decide which objects to go where (Cardboard and Paper)
                 # move to the right
                 rospy.loginfo("gantry_control - Right Chosen")
@@ -406,7 +409,13 @@ class GantryControl:
           # turn off suction
             rospy.loginfo("gantry_control - Pneumatic gripper Off")
             self.pneumatic_gripper(False)
-            rospy.loginfo("gantry_control - Done")
+            rospy.loginfo("gantry_control - grasp completed")
+            
+
+        rospy.loginfo("gantry_control - Reset conveyor_dist to 0")
+        self.conveyor_dist = 0
+
+        rospy.loginfo("gantry_control - Done")
 
         # Generate response
         # response = SuctionSrvResponse()
