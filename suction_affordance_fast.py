@@ -139,12 +139,13 @@ class SuctionGeneratorFast:
     def generate_suction(self, depth, bboxes, z_component_threshold):
         
         depth = depth.astype(np.float32)
-        # Filter depth map to remove belt points
+        # # Filter depth map to remove belt points
         # normal_depth = cv2.normalize(depth, 0, 255)
-        points = []
         # cv2.imshow('window',normal_depth)
         # cv2.waitKey(0)
         # print(depth.shape)
+
+        points = []
 
         for bbox in bboxes:
 
@@ -217,6 +218,7 @@ class SuctionGeneratorFast:
                 x = ((x_center - 321.1669921875)/ 605.622314453125 )* z
                 y = ((y_center - 231.57203674316406)/ 605.8401489257812 )* z
                 point = np.array([x, y, z, 1])
+
             else:
                 return None
 

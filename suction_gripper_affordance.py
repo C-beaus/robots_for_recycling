@@ -259,6 +259,7 @@ class SuctionGenerator:
             if point_xy:
 
                 z = self.compute_z(point_xy, flat_pcd)
+
                 point = np.array([point_xy[0], point_xy[1], z, 1])
                 transformed_point = self.cam2robot @ point
                 grasp_point = np.array([transformed_point[0], transformed_point[1], transformed_point[2], label])
