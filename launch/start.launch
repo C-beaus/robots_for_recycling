@@ -3,5 +3,16 @@
   <node pkg="robots_for_recycling" type="antipodal_planner.py" name="antipodal_planner"/>
   <node pkg="robots_for_recycling" type="camera_node.py" name="camera_node"/>
   <node pkg="robots_for_recycling" type="classify_server.py" name="classify_server"/>
+
   <!-- <node pkg="robots_for_recycling" type="gantry_control.py" name="gantry_control"/> -->
+  
+  <node pkg="robots_for_recycling" type="suction_planner.py" name="suction_planner"/>
+  <node pkg="robots_for_recycling" type="suction_affordance_fast.py" name="suction_affordance_fast"/>
+  <node pkg="panda_hw" type="panda_control_595.py" name="panda_control_595"/>
+
+  <!-- <include file="$(find panda_hw)/launch/start_hw_robot.launch"/> -->
+    <!-- <arg name="model" value="$(arg model)"/>
+    <arg name="configuration_basename" value="$(arg configuration_basename)"/> -->
+  <!-- </include> -->
+
 </launch>
