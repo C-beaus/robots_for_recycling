@@ -58,6 +58,7 @@ class GantryControl:
 
         self.conveyor_speed = 30  # Default speed in... [cm/s]???
 
+
         self.z_component_threshold = 0.8 # For surface normals.
         
         self.gripper_command_publisher = rospy.Publisher('/gripper_toggle', Bool, queue_size=5)
@@ -94,6 +95,12 @@ class GantryControl:
             9: -9000
         }
 
+        rospy.loginfo("gantry_control - Gantry to Home")
+        self.callbackHome()
+
+        # Set global distance information
+        self.conveyor_dist = 0 # Units?
+
         # Create service
         self.s = rospy.Service('get_plucked', GantrySrv, self.receive_data) 
         rospy.loginfo(f'Gantry Node Ready.')
@@ -101,6 +108,7 @@ class GantryControl:
         self.is_homing_done = False # If the homing process is done
         self.pubHomeStatus = rospy.Subscriber('master/homeStatus', Bool, self.home_status_callback)
 
+        
     def callback(self, msg):
             if (msg.data):
                 self.pick()
@@ -345,44 +353,60 @@ class GantryControl:
         '''
       # extrast grasp pose
         sucPose = req.grasps.data # [[x, y, z, label], .....]
-      # convert grasp pose from camera frame to gantry frame
-        gantryPose = self.convert_cam2gantryPose(sucPose)
-      # truncate pose values to three decimal places
-        gantryPose = [self.truncate_to_three_decimal_places(value) for value in gantryPose]
-      # send gantry home (required on startup) NOTE: move this to startup
-        rospy.loginfo("gantry_control - Gantry to Home")
-        self.callbackHome()
-        rospy.loginfo("SLEEP 3") #temporary
-        rospy.sleep(3)
-      # use y value for conveyor control - send item from camera view to gantry alignment
-        # TODO: implement conveyor control
-        rospy.loginfo("Moving conveyor")
-        self.move_conveyor(gantryPose[1])
-        # use x value of gantry alignment on conveyor
-        rospy.loginfo(f"gantry_control - Gantry to X: {gantryPose[0]}")
-        self.setXposition(gantryPose[0])
-        # use z /value for depth
-        # rospy.loginfo(f"gantry_control - Gantry to Z: {gantryPose[2]}")
-        # self.setZposition(gantryPose[2])
-        # # turn on suction
-        # rospy.loginfo("gantry_control - Pneumatic gripper On")
-        # self.pneumatic_gripper(True)
-        # # raise end effector up to z=1
-        # rospy.loginfo("gantry_control - Gantry to Z: 1")
-        # self.setZposition(1)
-        # # TODO: decide where to put material (left or right). Handle label here?
-        # if gantryPose[3] == 0:
-        #     # move to the right
-        #     rospy.loginfo("gantry_control - Right Chosen")
-        #     self.setXposition(60)
-        # else:
-        #     # move to the left
-        #     rospy.loginfo("gantry_control - Left Chosen")
-        #     self.setXposition(1)
-        # # turn off suction
-        # rospy.loginfo("gantry_control - Pneumatic gripper Off")
-        # self.pneumatic_gripper(False)
-        rospy.loginfo("gantry_control - Done")
+
+        reshaped = sucPose.reshape(-1, 4)
+
+        # # send gantry home (required on startup) NOTE: move this to startup
+        # rospy.loginfo("gantry_control - Gantry to Home")
+        # self.callbackHome()
+        # rospy.loginfo("SLEEP 3") #temporary
+        # rospy.sleep(3)
+
+        # Sort reshaped list by y value to ensure closest item to cartesian robot is first in the list
+        sorted_list = sorted(reshaped, key=lambda x: x[1])
+
+        for grasp_pose in sorted_list:
+            rospy.loginfo("gantry_control - grasp_pose:",grasp_pose)
+          # convert grasp pose from camera frame to gantry frame (NOTE: Converts from meters to inches. TODO: Change from inches to meters)
+            gantryPose = self.convert_cam2gantryPose(sucPose)
+          # truncate pose values to three decimal places
+            gantryPose = [self.truncate_to_three_decimal_places(value) for value in gantryPose]
+        # # send gantry home (required on startup) NOTE: move this to startup
+        #     rospy.loginfo("gantry_control - Gantry to Home")
+        #     self.callbackHome()
+        #     rospy.loginfo("SLEEP 3") #temporary
+        #     rospy.sleep(3)
+        # use y value for conveyor control - send item from camera view to gantry alignment
+            # TODO: implement conveyor control
+            rospy.loginfo("Moving conveyor")
+            self.move_conveyor(gantryPose[1] - self.conveyor_dist)
+            self.conveyor_dist += (gantryPose[1] - self.conveyor_dist)
+          # use x value of gantry alignment on conveyor
+            rospy.loginfo(f"gantry_control - Gantry to X: {gantryPose[0]}")
+            self.setXposition(gantryPose[0])
+          # use z /value for depth
+            rospy.loginfo(f"gantry_control - Gantry to Z: {gantryPose[2]}")
+            self.setZposition(gantryPose[2])
+          # turn on suction
+            rospy.loginfo("gantry_control - Pneumatic gripper On")
+            self.pneumatic_gripper(True)
+          # raise end effector up to z=1
+            rospy.loginfo("gantry_control - Gantry to Z: 1")
+            self.setZposition(1)
+            # TODO: decide where to put material (left or right). Handle label here?
+            # 0-2: left (closer to PC), 4-6: right
+            if gantryPose[3] == 0 or 1 or 4: # decide which objects to go where (Cardboard and Paper)
+                # move to the right
+                rospy.loginfo("gantry_control - Right Chosen")
+                self.setXposition(1)
+            else:
+                # move to the left
+                rospy.loginfo("gantry_control - Left Chosen")
+                self.setXposition(60)
+          # turn off suction
+            rospy.loginfo("gantry_control - Pneumatic gripper Off")
+            self.pneumatic_gripper(False)
+            rospy.loginfo("gantry_control - Done")
 
         # Generate response
         # response = SuctionSrvResponse()
