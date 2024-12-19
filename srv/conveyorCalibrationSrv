@@ -1,0 +1,3 @@
+int16 speed_value    # Request: Conveyor speed to set
+---
+bool success         # Response: Indicates if calibration succeeded

@@ -1,0 +1,3 @@
+std_msgs/Float64MultiArray grasps  # Flattened grasps. Each grasp has [x y z label]
+---
+bool success
