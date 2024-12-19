@@ -44,6 +44,10 @@ class SuctionPlanner:
             suction_poses = self.succ_gen.generate_suction(self.depth_map, self.boxes, self.z_component_threshold) # [[x, y, z, label], .....]
         else:
             suction_poses = self.succ_faster.generate_suction(self.depth_map, self.boxes, self.z_component_threshold)
+        
+        if suction_poses is None:
+            return np.array([], dtype=np.float64)
+        
         flattened_suction_poses = suction_poses.flatten()
 
         return flattened_suction_poses

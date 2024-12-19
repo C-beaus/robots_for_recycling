@@ -77,7 +77,7 @@ class AntipodalPlanner:
         img_gray = cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY)
         grasp_msg = Float64MultiArray()
         img_msg = Float64MultiArray()
-        img_msg.data = img_gray
+        img_msg.data = img_gray.flatten()
         grasp_msg.data = grasp_params_for_viz
         self.grasp_pub_for_viz.publish(grasp_msg)
         self.img_pub_for_viz.publish(img_msg)
