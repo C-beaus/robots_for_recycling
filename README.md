@@ -24,14 +24,24 @@ Once the PANDA nodes are initialized, you can launch the rest of the code. Open 
 ```
 "catkin_make"
 ``` 
-```
 "source devel/setup.bash"
+```
 ```
 Next, run the following command to launch all necessary nodes in the project: 
 ```
-roslaunch robots_for_recycling start.launch"
+"roslaunch robots_for_recycling start.launch"
 ```
 
+To run the gantry, you need to ensure the gantry gui is running 
+```
+"cd RoboticRecycling2023/recycling/src   -->  roslaunch RecyclingSystem.launch"
+```
+
+Also, to start the suction cup, you need to run the following
+```
+"rosrun rosserial_python serial_node.py _port:=/dev/ttyACM2 _baud:=57600"
+```     
+Note: check the port (Port /dev/ttyACM2 corresponds to Pneumatic Actuator Ardiuno)
 
 The project will run continuously until the user performs a manual kill command by typing control C (^C) in the terminal where these launch files were executed.
 
