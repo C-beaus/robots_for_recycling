@@ -15,8 +15,8 @@
   <node pkg="robots_for_recycling" type="classify_server.py" name="classify_server"/>
 
 
-  <!-- <node pkg="robots_for_recycling" type="gantry_control.py" name="gantry_control"/> -->
 
+  <!-- <node pkg="robots_for_recycling" type="gantry_control.py" name="gantry_control"/> -->
 
 
   <node pkg="robots_for_recycling" type="gantry_control.py" name="gantry_control"/>
@@ -25,6 +25,14 @@
   <node pkg="robots_for_recycling" type="suction_planner.py" name="suction_planner"/>
   <!-- <node pkg="robots_for_recycling" type="suction_affordance_fast.py" name="suction_affordance_fast"/> -->
 
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_comms_1">
+    <param name="port" value="/dev/ttyACM2"/>
+    <param name="baud" value="57600"/>
+  </node>
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_comms_2">
+    <param name="port" value="/dev/ttyACM3"/>
+    <param name="baud" value="57600"/>
+  </node>
 
   <node pkg="robots_for_recycling" type="suction_planner.py" name="suction_planner"/>
   <!-- <node pkg="robots_for_recycling" type="suction_affordance_fast.py" name="suction_affordance_fast"/> -->
