@@ -32,10 +32,12 @@ Once the PANDA nodes are initialized, you can launch the rest of the code. Open 
 ```
 "catkin_make"
 ``` 
+
 Source workspace:
 ```
 "source devel/setup.bash"
 ```
+
 Next, run the following command to launch all necessary nodes in the project: 
 ```
 "roslaunch robots_for_recycling start.launch"
