@@ -115,6 +115,25 @@ class PandaControl():
     def tf_cam_to_panda(self, pos):
         # Transforms coordiantes from camera frame to panda frame
 
+        # xRot = np.array([[1, 0, 0, 0],
+        #                 [0, cos(pi), -sin(pi), 0],
+        #                 [0, sin(pi), cos(pi), 0],
+        #                 [0, 0, 0, 1]])
+
+        # zRot = np.array([[cos(-pi/2), -sin(-pi/2), 0, 0],
+        #                 [sin(-pi/2), cos(-pi/2), 0, 0],
+        #                 [0, 0, 1, 0],
+        #                 [0, 0, 0, 1]])
+        
+        # T = np.array([[1, 0, 0, 0.465],
+        #             [0, 1, 0, 0],
+        #             [0, 0, 1, 0.75],
+        #             [0, 0, 0, 1]])
+
+        # p = np.array([pos[0], pos[1], pos[2], 1]).T
+        # posPanda = T.dot(xRot).dot(zRot).dot(p)
+        # return posPanda
+    
         xRot = np.array([[1, 0, 0, 0],
                         [0, cos(pi), -sin(pi), 0],
                         [0, sin(pi), cos(pi), 0],
@@ -125,7 +144,7 @@ class PandaControl():
                         [0, 0, 1, 0],
                         [0, 0, 0, 1]])
         
-        T = np.array([[1, 0, 0, 0.465],
+        T = np.array([[1, 0, 0, 0.435],
                     [0, 1, 0, 0],
                     [0, 0, 1, 0.75],
                     [0, 0, 0, 1]])

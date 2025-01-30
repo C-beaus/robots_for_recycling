@@ -318,9 +318,16 @@ class GantryControl:
 
     def convert_cam2gantryPose(self, grasp_pose):
         # Define the transformation matrix (4x4)
+        # transform_matrix = np.array([
+        #     [-1, 0, 0, self.cam2gantryHome_x],
+        #     [0, -1, 0, self.cam2gantryHome_y],
+        #     [0, 0, 1, self.cam2gantryHome_z],
+        #     [0, 0, 0, 1]
+        # ])
+        #new transformation for new camera orientation
         transform_matrix = np.array([
-            [-1, 0, 0, self.cam2gantryHome_x],
-            [0, -1, 0, self.cam2gantryHome_y],
+            [0, -1, 0, self.cam2gantryHome_x],
+            [1, 0, 0, self.cam2gantryHome_y],
             [0, 0, 1, self.cam2gantryHome_z],
             [0, 0, 0, 1]
         ])

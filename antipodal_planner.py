@@ -25,7 +25,8 @@ class AntipodalPlanner:
         """
         rospy.init_node("Antipodal_Planner")
         self.boxes = None
-        self.cam2bot = np.eye(4) # Change this to actual extrinsics. Ensure it is being passed through till the end.
+        # self.cam2bot = np.eye(4) # Change this to actual extrinsics. Ensure it is being passed through till the end.
+        self.cam2bot = np.matrix('0 1 0; -1 0 0; 0 0 1; 0 0 0 1') # new camera orientation?
 
         self.grasp_generation_service = rospy.Service('run_grasp_model', rgbdSrv, self.run_grasp_inference)
         self.grasp_selection_service = rospy.Service('select_grasps_from_bbs', GraspSrv, self.select_bbs_grasps)
