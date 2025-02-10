@@ -1,0 +1,32 @@
+camera_instrinsics:
+  fx: 605.622314453125
+  fy: 605.8401489257812
+  cx: 321.1669921875
+  cy: 231.57203674316406
+
+transformations:
+  camera_to_franka:
+    # rotation matrix and translation matrix w.r.t panda franka base frame
+    matrix: [
+      [ 1,  0,  0,  0.53195295478078],
+      [ 0, -1,  0,  0.1204406038],
+      [ 0,  0, -1,  0.929490745042573],
+      [ 0,  0,  0,  1]
+    ]
+  camera_to_gantry:
+    # rotation matrix and translation matrix w.r.t gantry frame
+    matrix: [
+      [-1,  0,  0,  0.775],
+      [ 0, -1,  0,  0.955],
+      [ 0,  0,  1, -0.620],
+      [ 0,  0,  0,  1]
+    ]
+  camera_to_conveyor_sorting:
+    # TEST MATRIX (not implemenmted)
+    # rotation matrix and translation matrix w.r.t sorting conveyor frame
+    matrix: [
+      [ 1,  0,  0,  0.535],
+      [ 0,  1,  0,  0],
+      [ 0,  0,  1,  0.045],
+      [ 0,  0,  0,  1]
+    ]
