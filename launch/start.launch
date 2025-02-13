@@ -1,4 +1,5 @@
 <launch>
+  <node pkg="robots_for_recycling" type="yaml_server.py" name="yaml_server" output="screen"/>
 
   <include file="$(find panda_hw)/launch/start_hw_robot.launch">
     <!-- <arg name="model" value="$(arg model)"/>
