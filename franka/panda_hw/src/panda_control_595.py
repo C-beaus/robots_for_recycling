@@ -25,11 +25,11 @@ CLOSE = 0.0302
 class PandaControl():
     def __init__(self) -> None:
         # roscpp_initialize(sys.argv)
-        # moveit_commander.roscpp_initializer(sys.argv)
-        # rospy.init_node('panda_traj_node',
-        #                 anonymous=True)
+        moveit_commander.roscpp_initializer(sys.argv)
+        rospy.init_node('panda_traj_node',
+                        anonymous=True)
         # moveit_commander.
-        moveit_commander.roscpp_initialize(sys.argv)
+        # moveit_commander.roscpp_initialize(sys.argv)
         # rospy.init_node('panda_traj_node',
         #                 anonymous=True)
         self.robot = moveit_commander.RobotCommander()
@@ -49,7 +49,7 @@ class PandaControl():
         self.add_back_wall()
         self.add_side_wall1()
         self.add_side_wall2()
-        self.set_def_pos() # Move the robot to home configuartion
+        # self.set_def_pos() # Move the robot to home configuartion
         self.set_gripper_distance(0.00)
         print("here")
 
@@ -90,7 +90,7 @@ class PandaControl():
 
     def get_pose(self):
         # Get current robot pose (Position + Orientation)
-        return self.moveGroup.get_current_pose()
+        return self.moveGroup.get_current_pose("panda_hand")
     
 
     def get_joint(self):
@@ -138,6 +138,10 @@ class PandaControl():
         p = np.array([pos[0], pos[1], pos[2], 1])
 
         T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
+        T = [[ 0.99543216,-0.09298424,-0.02165075, 0.34130363],
+ [-0.09354981,-0.99525476,-0.02676538, 0.12374948],
+ [-0.01905925, 0.02866854,-0.99940725, 0.8711072 ],
+ [ 0.        , 0.        , 0.        , 1.        ]]
 
         goal_pos = T@p
         # posPanda = T.dot(xRot).dot(zRot).dot(p)
@@ -282,7 +286,7 @@ class PandaControl():
 def default_test():
     pandaController = PandaControl()
 
-    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coodrinates are given wrt to camera    (End effector is not considered as a connected part) 
+    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coordinates are given wrt to camera    (End effector is not considered as a connected part) 
     start = pandaController.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
     
     print("Moving to Start location")

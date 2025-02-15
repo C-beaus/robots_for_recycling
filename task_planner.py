@@ -253,18 +253,22 @@ class TaskPlanner:
                                                                 # row would then become [x, y, z, angle, witdh, label]
 
                 if grasps:
+
                     rospy.loginfo("Grasps received for given objects.")
+                    rospy.loginfo("????")
                 else:
                     rospy.logwarn("No grasps received. Exiting run_franka function.")
                     return
-
+                rospy.loginfo("????")
 
                 radius = 50          # Radius of the circle
                 color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
                 thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
 
                 grasps = np.asarray(grasps)
+                rospy.loginfo("Getting img")
                 rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
+                rospy.loginfo("Got img")
 
 
                 # Draw the circle on the image
@@ -300,9 +304,10 @@ class TaskPlanner:
                 cv2.imshow('Live Image', rgb_frame)
 
                 # Press 'q' to exit
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                if cv2.waitKey() & 0xFF == ord('q'):
                     break
             counter+=1
+            rospy.loginfo(f"Counter = {counter}")
 
 
     def run_franka(self):
@@ -375,7 +380,9 @@ class TaskPlanner:
                 # Try to execute grasps. All grasp offsets must be handled within the franka/cartesian service.
                 # The current grasps are computed at the object, so they need a little offset to not collide with the object.
                 msg_list = np.asarray(self.objects_in_frame).flatten()
+                rospy.loginfo("Calling franka")
                 self.call_franka_robot_service(msg_list)
+                rospy.loginfo("Franka called")
 
                 # append to objects we tried to ensure we don't keep trying for the same object
                 self.objects_we_tried.append(self.objects_in_frame[0])

@@ -64,7 +64,7 @@ class ClassifyServer:
         current_dir = os.getcwd()
         print(current_dir)
         # current_dir = os.path.join(current_dir, "robots_for_recycling")
-        self.model_name = os.path.join(current_dir, 'models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth')
+        self.model_name = '/home/merl/RoboticRecycling2023/RBE595/src/robots_for_recycling/models/mobilenet_ss_18_wd_0001_class_dataset/fasterrcnn_model.pth'
         self.confidence_threshold = 0.7
 
         self.bridge = CvBridge()

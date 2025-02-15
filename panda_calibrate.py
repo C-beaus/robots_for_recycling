@@ -5,7 +5,7 @@ from scipy.spatial.transform import Rotation as R
 import pyrealsense2 as rs
 import numpy as np
 import cv2
-from robot_control import PandaControlNode
+from franka.panda_hw.src.panda_control_595 import PandaControl as PandaControlNode
 
 def align_depth_to_color():
 
@@ -102,7 +102,10 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
     x_offset = -2.2/100 # TODO double check offsets and their axes
     
     # marker pose in end effector frame
-    T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, -1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, -1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, 1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    # T_marker_ee = np.array([[-.707, .707, 0, x_offset],[0, 0, -1, 0],[.707, .707, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    T_marker_ee = np.array([[0, 0, 1, x_offset],[1, 0, 0, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
     
     translation = np.array([positon.x, positon.y, positon.z])
 
@@ -112,6 +115,7 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
 
     T_ee_base[:3, :3] = R_mat
     T_ee_base[:3, 3] = translation
+
 
     marker_size= 0.050
     image = align_depth_to_color()
@@ -133,10 +137,24 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
         T_camera_marker = np.eye(4)
         T_camera_marker[:3, :3] = R_camera_marker
         T_camera_marker[:3, 3] = tvec.ravel()
+        c_m = np.linalg.inv(T_camera_marker)
+        c_ee = np.dot(T_marker_ee, c_m)
+        m_b = np.dot(T_ee_base, T_marker_ee)
+        c_b_1 = np.dot(m_b, c_m)
+        c_b_2 = np.dot(T_ee_base, c_ee)
+        print(f'camera->marker:\n {c_m}')
+        print(f'marker->ee:\n {T_marker_ee}')
+        print(f'camera->ee:\n {c_ee}')
+        print(f'ee->base:\n {T_ee_base}')
+        print(f'marker->base:\n {m_b}')
+        print(f'camera->base:\n {c_b_1}')
+        print(f'camera->base:\n {c_b_2}')
+
+
         T_camera_base = np.dot(np.dot(T_ee_base, T_marker_ee), np.linalg.inv(T_camera_marker))
         
-        print(f"Transformation (Camera to Marker): {T_camera_marker}")
-        print(f"Extrinsic Transformation (Camera to Base): {np.array2string(T_camera_base, separator=',')}")
+        print(f"Transformation (Camera to Marker): \n{T_camera_marker}")
+        print(f"Extrinsic Transformation (Camera to Base): \n{np.array2string(T_camera_base, separator=',')}")
 
     else:
         return

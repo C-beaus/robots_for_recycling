@@ -19,6 +19,9 @@ Source:
 '''
 "source devel/setup.bash"
 '''
+Then connect to Franka E. Panda with https://172.16.0.2/desk
+Power on box. Unlock the joints. Activate FCI.
+
 Then run the following in the command line to launch all necessary nodes in the project. Make sure you are holding the deadman switch before running the following command: 
 ```
 "roslaunch panda_hw start_hw_robot.launch" 
@@ -28,13 +31,17 @@ Then, open a new terminal, cd into the panda_recycling workspace, catkin make an
 "rosrun panda_hw panda_control_595.py"
 ```
 
-Once the PANDA nodes are initialized, you can launch the rest of the code. Open a new terminal and navigate to the catkin workspace where the robots_for_recycling package is located. Catkin make and source this workspace by running the following: 
+Once the PANDA nodes are initialized, you can launch the rest of the code. Open a new terminal and navigate to the catkin workspace where the robots_for_recycling package is located (Update: RBE595). Catkin make and source this workspace by running the following: 
 ```
 "catkin_make"
 ``` 
 Source workspace:
 ```
 "source devel/setup.bash"
+```
+Or, source with bashrc for lab setup:
+```
+source ~/.bashrc
 ```
 Next, run the following command to launch all necessary nodes in the project: 
 ```
@@ -54,4 +61,4 @@ Note: check the port (Port /dev/ttyACM2 corresponds to Pneumatic Actuator Ardiun
 
 The project will run continuously until the user performs a manual kill command by typing control C (^C) in the terminal where these launch files were executed.
 
-
+ADD task_planner.py
