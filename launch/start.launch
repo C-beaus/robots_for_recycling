@@ -6,7 +6,7 @@
     <arg name="configuration_basename" value="$(arg configuration_basename)"/> -->
   </include>
 
-  <!-- <node pkg="panda_hw" type="panda_control_595.py" name="panda_control_595"/> -->
+  <node pkg="panda_hw" type="panda_control_595.py" name="panda_control_595"/>
 
   <!-- <node pkg="robots_for_recycling" type="task_planner.py" name="task_planner"/> -->
   <include file="/home/merl/RoboticRecycling2023/recycling/src/RecyclingSystem.launch"/>
