@@ -25,7 +25,9 @@ CLOSE = 0.0302
 class PandaControl():
     def __init__(self) -> None:
         # roscpp_initialize(sys.argv)
-        moveit_commander.roscpp_initializer(sys.argv)
+        # moveit_commander.roscpp_initializer(sys.argv) # 2025-02-16 Commented out
+        moveit_commander.roscpp_initialize(sys.argv)    # 2025-02-16 Added this
+
         rospy.init_node('panda_traj_node',
                         anonymous=True)
         # moveit_commander.

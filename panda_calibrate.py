@@ -99,7 +99,8 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
     quat = pose.orientation
 
     z_offset = -6.8/100 # TODO double check offsets and their axes
-    x_offset = -2.2/100 # TODO double check offsets and their axes
+    # x_offset = -2.2/100 # TODO double check offsets and their axes
+    x_offset =  1.3/100 # TODO double check offsets and their axes
     
     # marker pose in end effector frame
     # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, -1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation

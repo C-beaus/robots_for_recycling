@@ -53,8 +53,14 @@ class GantryControl:
         self.cam2robot = np.eye(4) # Replace with the extrinsic calibration
 
         self.cam2gantryHome_x = 0.7750 # [meters]
-        self.cam2gantryHome_y = 0.955  # [meters]
-        self.cam2gantryHome_z = -0.620 # [meters]
+        self.cam2gantryHome_y = 0.930  # [meters] # old previous 0.955
+        self.cam2gantryHome_z = -0.675 # [meters] # old previous 0.620
+        '''
+        For self.cam2gantryHome_z:
+        (Measure top of conveyor to suction cup z home: ~0.140 [meters])
+        (Measure top of conveyor to camera z origin: ~-0.815 [meters])
+        Differece: -0.675 [meters]
+        '''
 
         self.conveyor_speed = 30  # Default speed in... [cm/s]???
 
