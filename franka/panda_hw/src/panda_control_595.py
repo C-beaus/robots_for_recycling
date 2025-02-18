@@ -53,7 +53,7 @@ class PandaControl():
         self.add_side_wall2()
         # self.set_def_pos() # Move the robot to home configuartion
         self.set_gripper_distance(0.00)
-        print("here")
+        print("End of panda_control_595 __init__")
 
     def move_joint(self, goalConf):
         # Move the robot on the basis of joint values entered
@@ -139,11 +139,13 @@ class PandaControl():
 
         p = np.array([pos[0], pos[1], pos[2], 1])
 
-        T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
-        T = [[ 0.99543216,-0.09298424,-0.02165075, 0.34130363],
- [-0.09354981,-0.99525476,-0.02676538, 0.12374948],
- [-0.01905925, 0.02866854,-0.99940725, 0.8711072 ],
+        # T = [[0, -1, 0, 0.4719], [1, 0, 0, 0.0535], [0, 0, -1, 0.9953], [0, 0, 0, 1]]
+
+        T= [[ 0.99580984,-0.08684218,-0.0286567 , 0.33299418],
+ [-0.08693175,-0.99621247,-0.00189243, 0.08382966],
+ [-0.02838382, 0.00437568,-0.99958752, 0.90775953],
  [ 0.        , 0.        , 0.        , 1.        ]]
+
 
         goal_pos = T@p
         # posPanda = T.dot(xRot).dot(zRot).dot(p)
@@ -288,7 +290,7 @@ class PandaControl():
 def default_test():
     pandaController = PandaControl()
 
-    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coordinates are given wrt to camera    (End effector is not considered as a connected part) 
+    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coordinates are given wrt to camera    (End effector is not considered as a connected part) # TODO: What is the purpose of these coordinates? In what units?
     start = pandaController.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
     
     print("Moving to Start location")

@@ -184,11 +184,11 @@ class SuctionGenerator:
         
         depth = depth.astype(np.float32)
         # Filter depth map to remove belt points
-        # normal_depth = cv2.normalize(depth, 0, 255)
+        normal_depth = cv2.normalize(depth, 0, 255)
         points = []
-        # cv2.imshow('window',normal_depth)
-        # cv2.waitKey(0)
-        # print(depth.shape)
+        cv2.imshow('window',normal_depth)
+        cv2.waitKey(0)
+        print(depth.shape)
 
         for bbox in bboxes:
 
@@ -202,16 +202,16 @@ class SuctionGenerator:
             bb_top_left_col = int(x_center - width/2)
             bb_bottom_right_col = int(x_center + width/2)
 
-            # cv2.rectangle(normal_depth, (bb_top_left_col, bb_top_left_row), (bb_bottom_right_col, bb_bottom_right_row), (0, 255, 0), 2)
-            # cv2.imshow('window', normal_depth)
-            # cv2.waitKey(0)
+            cv2.rectangle(normal_depth, (bb_top_left_col, bb_top_left_row), (bb_bottom_right_col, bb_bottom_right_row), (0, 255, 0), 2)
+            cv2.imshow('window', normal_depth)
+            cv2.waitKey(0)
 
             depth_crop = depth[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col]
             padded_crop[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col] = depth_crop
             padded_crop = self.remove_belt_points(padded_crop)
-            # cv2.imshow('window', depth_crop)
-            # cv2.waitKey(0)
-            # print(depth_crop)
+            cv2.imshow('window', depth_crop)
+            cv2.waitKey(0)
+            print(depth_crop)
 
             # # # calculate principal point with respect to crop
             # crop_cx = 321.1669921875 - bb_top_left_col

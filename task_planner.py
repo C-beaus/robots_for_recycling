@@ -24,38 +24,40 @@ class TaskPlanner:
         self.executor = ThreadPoolExecutor()
 
         self.franka_running = False  # Reentrancy guard for franka
-        self.cartesian_running = False 
+        self.cartesian_running = False
+
+        self.bridge = CvBridge()
 
         if calibrate_bool:
-            self.calibrate_franka = rospy.Subscriber("/calibrate", Float64, self.calibrate_franka)
-            self.bridge = CvBridge()
+            # self.franka_visualize = rospy.Subscriber("/calibrate", Float64, self.franka_visualize)
+            
+            self.franka_visualize()
             print("Ready to calibrate")
 
-            
-        else:
-            self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
 
-            # self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
-            # rospy.sleep(0.5)
-            # self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
+        self.conveyor_speed_sub = rospy.Subscriber('/conveyor_speed', Float64, self.conveyor_speed_callback)
 
-            self.objects_in_frame = []
-            self.objects_we_tried = []
+        # self.franka_timer = rospy.Timer(rospy.Duration(5), self.run_franka)
+        # rospy.sleep(0.5)
+        # self.cartesian_timer = rospy.Timer(rospy.Duration(5), self.run_cartesian)
 
-            self.run_franka()
-            # self.run_cartesian()
+        self.objects_in_frame = []
+        self.objects_we_tried = []
 
-            rospy.on_shutdown(self.shutdown)
-        
+        self.run_franka()
+        # self.run_cartesian()
+
+        rospy.on_shutdown(self.shutdown)
+
         # self.pandaManipulator = PandaManipulator()
         # self.pandaEndEffector = self.pandaManipulator.end_effector
-        
+
 
     def conveyor_speed_callback(self, msg):
         self.drif_speed = msg.data
 
     def call_camera_service(self):
-        
+
         # Wait for the service to become available
         rospy.wait_for_service('camera_service')
         try:
@@ -76,7 +78,7 @@ class TaskPlanner:
 
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to the camera service failed: {e}")
-    
+
     def call_grasp_inference_service(self, depth_image, rgb_image):
 
         # Wait for the service to become available
@@ -87,7 +89,7 @@ class TaskPlanner:
             request = rgbdSrvRequest()
             request.rgb_image = rgb_image
             request.depth_image = depth_image
-            
+
             # Call the service
             rospy.loginfo("Calling the antipodal model service to run inference on current frames...")
             response = run_antipodal_network(request)
@@ -113,7 +115,7 @@ class TaskPlanner:
             get_grasps = rospy.ServiceProxy('select_grasps_from_bbs', GraspSrv)
             request = GraspSrvRequest()
             request.bbs.data = bboxes
-            
+
             # Call the service
             rospy.loginfo("Calling the antipodal grasp generation service to select grasps within given bounding boxes...")
             response = get_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 6) by manipualtor node
@@ -139,7 +141,7 @@ class TaskPlanner:
             response = panda_control(request)
         except:
             rospy.loginfo("panda control service failed")
-    
+
     def call_cartesian_robot_service(self, grasps): # WIP
         # Wait for the service to become available
         rospy.wait_for_service('get_plucked')
@@ -151,9 +153,9 @@ class TaskPlanner:
             return response
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to gantry control service failed: {e}")
-    
+
     def call_suction_grasp_service(self, depth_image, bboxes):
-        
+
         # Wait for the service to become available
         rospy.wait_for_service('get_sucked')
         try:
@@ -162,7 +164,7 @@ class TaskPlanner:
             request = SuctionSrvRequest()
             request.bbs.data = bboxes
             request.depth_image = depth_image
-            
+
             # Call the service
             rospy.loginfo("Calling the suction grasp generation service to generate grasps within given bounding boxes...")
             response = get_suction_grasps(request) # Flat Grasps need to be reshaped using response.rehsape(-1, 4) by manipualtor node
@@ -177,7 +179,7 @@ class TaskPlanner:
 
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to suction grasp selection service failed: {e}")
-    
+
     def call_classification_service(self, rgb_image):
 
         # Wait for the service to become available
@@ -187,7 +189,7 @@ class TaskPlanner:
             get_bboxes = rospy.ServiceProxy('classify_waste', ClassifySrv)
             request = ClassifySrvRequest()
             request.rgb_image = rgb_image
-            
+
             # Call the service
             rospy.loginfo("Calling the classification service to generate bounding boxes...")
             response = get_bboxes(request)
@@ -202,7 +204,7 @@ class TaskPlanner:
 
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to classification service failed: {e}")
-    
+
     def run_parallel_tasks(self, tasks, executor):
         futures = [self.executor.submit(task[0], *task[1:]) for task in tasks]
         results = []
@@ -214,10 +216,11 @@ class TaskPlanner:
         return results
 
 
-    def calibrate_franka(self, msg):
+    def franka_visualize(self):
 
         counter = 0
         while True:
+        # while counter <10:
             # Capture camera frames
             # Capture camera frames
             if counter <10:
@@ -255,70 +258,100 @@ class TaskPlanner:
                 if grasps:
 
                     rospy.loginfo("Grasps received for given objects.")
-                    rospy.loginfo("????")
+                    rospy.loginfo("???")
                 else:
                     rospy.logwarn("No grasps received. Exiting run_franka function.")
                     return
                 rospy.loginfo("????")
-
-                radius = 50          # Radius of the circle
-                color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
-                thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
-
-                grasps = np.asarray(grasps)
-                rospy.loginfo("Getting img")
-                rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
-                rospy.loginfo("Got img")
+                self.show_grasps(rgb_image, bboxes, grasps)
+                counter+=1
+                rospy.loginfo(f"Counter = {counter}")
+            rospy.loginfo(f"Exit. Counter = {counter}")
+            counter = 0
+        rospy.loginfo(f"End. Counter = {counter}")
 
 
-                # Draw the circle on the image
+    def show_grasps(self, rgb_image, bboxes, grasps):
+        grasps = np.reshape(grasps, (-1, 6))
+        bboxes = np.reshape(bboxes, (-1, 5))
+        radius = 50          # Radius of the circle
+        color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
+        thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
+        print(grasps, bboxes)
+        # grasps = np.asarray(grasps)
+        rospy.loginfo("Getting img")
+        rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
+        rospy.loginfo("Got img")
 
-                # print(f"here are the boxes: {grasps}")
-                # print(f"type is: {type(grasps)}")
-                # print(f"dir is: {dir(grasps)}")
-                # print(f"output: {yoloV5_data.output}")
-                # print(f"output.data {grasps.output.data}")
+        for bbox in bboxes:
+            half_w = bbox[3]/2.0
+            half_h = bbox[4]/2.0
 
-                ppx=321.1669921875
-                ppy=231.57203674316406
-                fx=605.622314453125
-                fy=605.8401489257812
+            min_x = int(bbox[1]-half_w)
+            max_x = int(bbox[1]+half_w)
+            min_y = int(bbox[2]-half_h)
+            max_y = int(bbox[2]+half_h)
+            cv2.line(rgb_frame, (min_x, int(bbox[2])), (max_x, int(bbox[2])), (255,0,0), 1)
+            cv2.line(rgb_frame, (int(bbox[1]), min_y), (int(bbox[1]), max_y), (255,0,0), 1)
 
-                center_z = grasps[2]
-                center_x = (grasps[0]/center_z) * fx + ppx
-                center_y = (grasps[1]/center_z) * fy + ppy
-                print(f"x: {center_x}, y: {center_y}, z: {center_z}")
+        ppx=321.1669921875
+        ppy=231.57203674316406
+        fx=605.622314453125
+        fy=605.8401489257812
 
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                cv2.putText(rgb_frame, f'x: {center_x}, y: {center_y}, z: {center_z}', (50, 50), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-                center = (int(center_x),int(center_y))
-                print(f"center is: {center}")
-                # print(rgb_image)
-                cv2.circle(rgb_frame, center, radius, color, thickness)
-                cv2.circle(rgb_frame, center, 2, color, 1)
 
-                print("going to show")
+                
 
-                # Display the image with the circle
-                cv2.imshow('Live Image', rgb_frame)
+        for grasp in grasps:
+            center_z = grasp[2]
+            center_x = (grasp[0]/center_z) * fx + ppx
+            center_y = (grasp[1]/center_z) * fy + ppy
+            print(f"x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
 
-                # Press 'q' to exit
-                if cv2.waitKey() & 0xFF == ord('q'):
-                    break
-            counter+=1
-            rospy.loginfo(f"Counter = {counter}")
 
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(rgb_frame, f'x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}', (50, 50), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+            center = (int(center_x),int(center_y))
+            print(f"center is: {center}, angle is: {grasp[3]*180/3.1415}")
+            # print(rgb_image)
+            # cv2.circle(rgb_frame, center, radius, color, thickness)
+            # cv2.ellipse(img=rgb_frame, center=center, axes=(int(800*grasp[4]), 10), angle=grasp[3]*180/3.1415, startAngle=0, endAngle=360, color=color, thickness=2)
+
+            angle_degrees = grasp[3] * 180 / np.pi
+            size = (20, 800*grasp[4])  # Size of the rectangle (width, height)
+            # Create a rotated rectangle
+            rotated_rect = (center, size, angle_degrees)
+            
+            # Get the four corners of the rotated rectangle
+            box_points = cv2.boxPoints(rotated_rect)
+            box_points = np.int0(box_points)  # Convert to integer points
+
+            # Draw the rectangle on the image
+            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=255, thickness=2)
+
+            cv2.circle(rgb_frame, center, 2, color, 1)
+
+            print("going to show")
+
+            # Display the image with the circle
+            cv2.imshow('Live Image', rgb_frame)
+
+            # Press 'q' to exit
+            if cv2.waitKey() & 0xFF == ord('q'):
+                return -1
+            return 0
 
     def run_franka(self):
 
         if self.franka_running:
             rospy.loginfo("run_franka callback is already running. Skipping this cycle.")
             return
-        
+
         self.franka_running = True
         empty_frame = False
-        
+
         try:
             while not empty_frame:
                 # Capture camera frames
@@ -353,6 +386,7 @@ class TaskPlanner:
                 # Perform grasp selection
                 grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
                                                                 # row would then become [x, y, z, angle, witdh, label]\
+                self.show_grasps(rgb_image, bboxes, grasps)
                 grasps_reshaped = np.asarray(grasps).reshape(-1,6)
 
                 # If this is the first time and there are no objects, add them all
@@ -398,7 +432,7 @@ class TaskPlanner:
         finally:
             self.franka_running = False
 
-    
+
     def run_cartesian(self):
 
         if self.cartesian_running:
@@ -423,7 +457,7 @@ class TaskPlanner:
                     return
 
                 print("here")
-                suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like 
+                suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like
                                             # grasps.reshape(-1, 4) where each  row would then become [x, y, z, label]
 
                 print("suction grasps collected")
