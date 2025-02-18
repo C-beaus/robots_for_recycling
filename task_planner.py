@@ -307,7 +307,8 @@ class TaskPlanner:
             center_z = grasp[2]
             center_x = (grasp[0]/center_z) * fx + ppx
             center_y = (grasp[1]/center_z) * fy + ppy
-            print(f"x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
+            print(f"GRASP wrt camera [pixels/pixels/meters]: x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
+            print(f"GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
 
 
             font = cv2.FONT_HERSHEY_SIMPLEX

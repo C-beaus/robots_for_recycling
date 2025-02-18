@@ -25,6 +25,8 @@ def align_depth_to_color():
             color_image = np.asanyarray(color_frame.get_data())
             cv2.imshow('Color Image', color_image)
 
+            # print("panda_calibrate: waiting for 'q'")
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
