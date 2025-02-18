@@ -284,22 +284,30 @@ class TaskPlanner:
         rospy.loginfo("Got img")
 
         for bbox in bboxes:
+            center = (bbox[1], bbox[2])
+            size = (bbox[3], bbox[4])
             half_w = bbox[3]/2.0
             half_h = bbox[4]/2.0
 
-            min_x = int(bbox[1]-half_w)
-            max_x = int(bbox[1]+half_w)
-            min_y = int(bbox[2]-half_h)
-            max_y = int(bbox[2]+half_h)
-            cv2.line(rgb_frame, (min_x, int(bbox[2])), (max_x, int(bbox[2])), (255,0,0), 1)
-            cv2.line(rgb_frame, (int(bbox[1]), min_y), (int(bbox[1]), max_y), (255,0,0), 1)
+            # min_x = int(bbox[1]-half_w)
+            # max_x = int(bbox[1]+half_w)
+            # min_y = int(bbox[2]-half_h)
+            # max_y = int(bbox[2]+half_h)
+            rotated_rect = (center, size, 0)
+            
+            # Get the four corners of the rotated rectangle
+            box_points = cv2.boxPoints(rotated_rect)
+            box_points = np.int32(box_points)  # Convert to integer points
+
+            # Draw the rectangle on the image
+            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=50, thickness=2)
 
         ppx=321.1669921875
         ppy=231.57203674316406
         fx=605.622314453125
         fy=605.8401489257812
 
-        for grasp in grasps:
+        for ind, grasp in enumerate(grasps):
             center_z = grasp[2]
             center_x = (grasp[0]/center_z) * fx + ppx
             center_y = (grasp[1]/center_z) * fy + ppy
@@ -308,7 +316,7 @@ class TaskPlanner:
 
 
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(rgb_frame, f'x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}', (50, 50), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.putText(rgb_frame, f'x: {center_x:0.0f}, y: {center_y:0.0f}, z: {center_z:0.3f}', (20, 20*(ind+1)), font, .3, (0, 255, 0), 1, cv2.LINE_AA)
 
             center = (int(center_x),int(center_y))
             print(f"center is: {center}, angle is: {grasp[3]*180/3.1415}")
@@ -317,28 +325,29 @@ class TaskPlanner:
             # cv2.ellipse(img=rgb_frame, center=center, axes=(int(800*grasp[4]), 10), angle=grasp[3]*180/3.1415, startAngle=0, endAngle=360, color=color, thickness=2)
 
             angle_degrees = grasp[3] * 180 / np.pi
+            angle_degrees += 45
             size = (20, 800*grasp[4])  # Size of the rectangle (width, height)
             # Create a rotated rectangle
             rotated_rect = (center, size, angle_degrees)
             
             # Get the four corners of the rotated rectangle
             box_points = cv2.boxPoints(rotated_rect)
-            box_points = np.int0(box_points)  # Convert to integer points
+            box_points = np.int32(box_points)  # Convert to integer points
 
             # Draw the rectangle on the image
             cv2.polylines(rgb_frame, [box_points], isClosed=True, color=255, thickness=2)
 
             cv2.circle(rgb_frame, center, 2, color, 1)
 
-            print("going to show")
+        print("going to show")
 
-            # Display the image with the circle
-            cv2.imshow('Live Image', rgb_frame)
+        # Display the image with the circle
+        cv2.imshow('Live Image', rgb_frame)
 
-            # Press 'q' to exit
-            if cv2.waitKey() & 0xFF == ord('q'):
-                return -1
-            return 0
+        # Press 'q' to exit
+        if cv2.waitKey() & 0xFF == ord('q'):
+            return -1
+        return 0
 
     def run_franka(self):
 
@@ -374,7 +383,7 @@ class TaskPlanner:
                         rospy.logwarn("Grasp network's inference failed. Exiting run_franka function.")
                         return
 
-                    rospy.loginfo(f"Results from antipodal grasp service revcevied.")
+                    rospy.loginfo(f"Results from antipodal grasp service received.")
 
                 else:
                     rospy.logwarn("RGB and Depth Frames did not arrive. Check Service.")
@@ -383,7 +392,7 @@ class TaskPlanner:
                 # Perform grasp selection
                 grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
                                                                 # row would then become [x, y, z, angle, witdh, label]\
-                # self.show_grasps(rgb_image, bboxes, grasps)
+                self.show_grasps(rgb_image, bboxes, grasps)
                 grasps_reshaped = np.asarray(grasps).reshape(-1,6)
 
                 #Correct for the insane hand geometry

@@ -92,17 +92,18 @@ def estimate_marker_pose(corners, ids, image, marker_size, camera_matrix, dist_c
     return rvec, tvec
 
 
-def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
+def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399,-2.104,2.801,3.464,-1.779]):
 
     robot_controller = PandaControlNode()
+    robot_controller.move_joint(t_joint)
     pose = robot_controller.get_pose().pose # Could also be a problem, check if this is actually to EE and not the last joint before EE
     print(f'Current EE Pose: {pose}')
     positon = pose.position
     quat = pose.orientation
 
-    z_offset = -6.8/100 # TODO double check offsets and their axes
-    # x_offset = -2.2/100 # TODO double check offsets and their axes
-    x_offset =  1.3/100 # TODO double check offsets and their axes
+    z_offset = 6.8/100 # TODO double check offsets and their axes
+    x_offset = 2.2/100 # TODO double check offsets and their axes
+    # x_offset =  1.3/100 # TODO double check offsets and their axes
     
     # marker pose in end effector frame
     # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, -1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
@@ -145,13 +146,13 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
         m_b = np.dot(T_ee_base, T_marker_ee)
         c_b_1 = np.dot(m_b, c_m)
         c_b_2 = np.dot(T_ee_base, c_ee)
-        print(f'camera->marker:\n {c_m}')
-        print(f'marker->ee:\n {T_marker_ee}')
-        print(f'camera->ee:\n {c_ee}')
-        print(f'ee->base:\n {T_ee_base}')
-        print(f'marker->base:\n {m_b}')
-        print(f'camera->base:\n {c_b_1}')
-        print(f'camera->base:\n {c_b_2}')
+        # print(f'camera->marker:\n {c_m}')
+        # print(f'marker->ee:\n {T_marker_ee}')
+        # print(f'camera->ee:\n {c_ee}')
+        # print(f'ee->base:\n {T_ee_base}')
+        # print(f'marker->base:\n {m_b}')
+        # print(f'camera->base:\n {c_b_1}')
+        # print(f'camera->base:\n {c_b_2}')
 
 
         T_camera_base = np.dot(np.dot(T_ee_base, T_marker_ee), np.linalg.inv(T_camera_marker))
@@ -162,4 +163,7 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4)):
     else:
         return
 
-main()
+# main(t_joint=[-.166,-.678,.399,-2.104,2.801,3.464,-1.779])
+# main(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76])
+# main(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829])
+main(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339])
