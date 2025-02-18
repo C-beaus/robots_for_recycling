@@ -11,7 +11,7 @@ import cv2
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from cv_bridge import CvBridge
-
+from time import sleep
 
 
 class TaskPlanner:
@@ -299,10 +299,6 @@ class TaskPlanner:
         fx=605.622314453125
         fy=605.8401489257812
 
-
-
-                
-
         for grasp in grasps:
             center_z = grasp[2]
             center_x = (grasp[0]/center_z) * fx + ppx
@@ -387,8 +383,11 @@ class TaskPlanner:
                 # Perform grasp selection
                 grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
                                                                 # row would then become [x, y, z, angle, witdh, label]\
-                self.show_grasps(rgb_image, bboxes, grasps)
+                # self.show_grasps(rgb_image, bboxes, grasps)
                 grasps_reshaped = np.asarray(grasps).reshape(-1,6)
+
+                #Correct for the insane hand geometry
+                grasps_reshaped[:,3] -= (np.pi/4)
 
                 # If this is the first time and there are no objects, add them all
                 if len(self.objects_we_tried) == 0:
