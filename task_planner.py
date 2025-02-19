@@ -14,6 +14,8 @@ from cv_bridge import CvBridge
 from time import sleep
 
 
+font = cv2.FONT_HERSHEY_SIMPLEX
+
 class TaskPlanner:
     def __init__(self, calibrate_bool):
         rospy.init_node("Recycler")
@@ -271,8 +273,7 @@ class TaskPlanner:
         rospy.loginfo(f"End. Counter = {counter}")
 
 
-    def show_grasps(self, rgb_image, bboxes, grasps):
-        grasps = np.reshape(grasps, (-1, 6))
+    def show_grasps(self, rgb_image, depth_image, bboxes, grasps):
         bboxes = np.reshape(bboxes, (-1, 5))
         radius = 50          # Radius of the circle
         color = (0, 0, 255)   # Red color in BGR (OpenCV uses BGR, not RGB)
@@ -281,9 +282,10 @@ class TaskPlanner:
         # grasps = np.asarray(grasps)
         rospy.loginfo("Getting img")
         rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
+        depth_frame = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding="64FC1")
         rospy.loginfo("Got img")
 
-        for bbox in bboxes:
+        for ind, bbox in enumerate(bboxes):
             center = (bbox[1], bbox[2])
             size = (bbox[3], bbox[4])
             half_w = bbox[3]/2.0
@@ -298,9 +300,10 @@ class TaskPlanner:
             # Get the four corners of the rotated rectangle
             box_points = cv2.boxPoints(rotated_rect)
             box_points = np.int32(box_points)  # Convert to integer points
+            cv2.putText(rgb_frame, f'{ind}', (int(5+bbox[1]-half_w), int(12+bbox[2]-half_h)), font, .3, (255, 0, 0), 1, cv2.LINE_AA)
 
             # Draw the rectangle on the image
-            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=50, thickness=2)
+            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=255, thickness=2)
 
         ppx=321.1669921875
         ppy=231.57203674316406
@@ -315,8 +318,8 @@ class TaskPlanner:
             print(f"GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
 
 
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(rgb_frame, f'x: {center_x:0.0f}, y: {center_y:0.0f}, z: {center_z:0.3f}', (20, 20*(ind+1)), font, .3, (0, 255, 0), 1, cv2.LINE_AA)
+            
+            cv2.putText(rgb_frame, f'[{ind}] x: {center_x:0.0f}, y: {center_y:0.0f}, z: {center_z:0.3f}', (20, 20*(ind+1)), font, .3, (0, 0, 255), 1, cv2.LINE_AA)
 
             center = (int(center_x),int(center_y))
             print(f"center is: {center}, angle is: {grasp[3]*180/3.1415}")
@@ -325,8 +328,8 @@ class TaskPlanner:
             # cv2.ellipse(img=rgb_frame, center=center, axes=(int(800*grasp[4]), 10), angle=grasp[3]*180/3.1415, startAngle=0, endAngle=360, color=color, thickness=2)
 
             angle_degrees = grasp[3] * 180 / np.pi
-            angle_degrees += 45
-            size = (20, 800*grasp[4])  # Size of the rectangle (width, height)
+            angle_degrees -= 45
+            size = (5, 800*grasp[4])  # Size of the rectangle (width, height)
             # Create a rotated rectangle
             rotated_rect = (center, size, angle_degrees)
             
@@ -335,7 +338,7 @@ class TaskPlanner:
             box_points = np.int32(box_points)  # Convert to integer points
 
             # Draw the rectangle on the image
-            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=255, thickness=2)
+            cv2.polylines(rgb_frame, [box_points], isClosed=True, color=(0,0,255), thickness=2)
 
             cv2.circle(rgb_frame, center, 2, color, 1)
 
@@ -343,6 +346,13 @@ class TaskPlanner:
 
         # Display the image with the circle
         cv2.imshow('Live Image', rgb_frame)
+        # https://stackoverflow.com/questions/46260601/convert-image-from-cv-64f-to-cv-8u
+        print(f'{depth_frame.min(), depth_frame.max()}')
+        depth_frame -= depth_frame.min()
+        depth_frame /= depth_frame.max()
+        depth_frame_8 = np.uint8(255*depth_frame)
+        colored_depth_frame = cv2.applyColorMap(depth_frame_8, cv2.COLORMAP_JET)
+        cv2.imshow('Depth Image', colored_depth_frame)
 
         # Press 'q' to exit
         if cv2.waitKey() & 0xFF == ord('q'):
@@ -392,11 +402,14 @@ class TaskPlanner:
                 # Perform grasp selection
                 grasps = self.call_grasp_selection_service(bboxes) # This is a flat array. needs to be reshaped like grasps.reshape(-1, 6) where each
                                                                 # row would then become [x, y, z, angle, witdh, label]\
-                self.show_grasps(rgb_image, bboxes, grasps)
+                
                 grasps_reshaped = np.asarray(grasps).reshape(-1,6)
 
                 #Correct for the insane hand geometry
                 grasps_reshaped[:,3] -= (np.pi/4)
+                #Prevent belt collisions
+                grasps_reshaped[:,2] = np.minimum(grasps_reshaped[:,2], .831)
+                self.show_grasps(rgb_image, depth_image, bboxes, grasps_reshaped)
 
                 # If this is the first time and there are no objects, add them all
                 if len(self.objects_we_tried) == 0:

@@ -65,7 +65,7 @@ def detect_marker(image, visualize=True):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = gray.astype(np.uint8)
 
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
     parameters = cv2.aruco.DetectorParameters()
     detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
     corners, ids, rejected = detector.detectMarkers(gray)
@@ -92,7 +92,7 @@ def estimate_marker_pose(corners, ids, image, marker_size, camera_matrix, dist_c
     return rvec, tvec
 
 
-def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399,-2.104,2.801,3.464,-1.779]):
+def main_loop(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399,-2.104,2.801,3.464,-1.779]):
 
     robot_controller = PandaControlNode()
     robot_controller.move_joint(t_joint)
@@ -103,13 +103,14 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399
 
     z_offset = 6.8/100 # TODO double check offsets and their axes
     x_offset = 2.2/100 # TODO double check offsets and their axes
-    # x_offset =  1.3/100 # TODO double check offsets and their axes
+    y_offset = 0/100 # TODO double check offsets and their axes
     
     # marker pose in end effector frame
     # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, -1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
     # T_marker_ee = np.array([[-1, 0, 0, x_offset],[0, 0, 1, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
     # T_marker_ee = np.array([[-.707, .707, 0, x_offset],[0, 0, -1, 0],[.707, .707, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
-    T_marker_ee = np.array([[0, 0, 1, x_offset],[1, 0, 0, 0],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    T_marker_ee = np.array([[0, 0, 1, x_offset],[1, 0, 0, y_offset],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
+    # T_marker_ee = np.array([[0, 1, 0, x_offset],[1, 0, 0, y_offset],[0, 0, -1, z_offset],[0, 0, 0, 1]]) #Marker on stick config
     
     translation = np.array([positon.x, positon.y, positon.z])
 
@@ -121,7 +122,7 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399
     T_ee_base[:3, 3] = translation
 
 
-    marker_size= 0.050
+    marker_size= 0.05
     image = align_depth_to_color()
 
     ppx=321.1669921875
@@ -157,13 +158,16 @@ def main(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678,.399
 
         T_camera_base = np.dot(np.dot(T_ee_base, T_marker_ee), np.linalg.inv(T_camera_marker))
         
-        print(f"Transformation (Camera to Marker): \n{T_camera_marker}")
+        # print(f"Transformation (Camera to Marker): \n{T_camera_marker}")
         print(f"Extrinsic Transformation (Camera to Base): \n{np.array2string(T_camera_base, separator=',')}")
-
+        return T_camera_base
     else:
         return
 
-# main(t_joint=[-.166,-.678,.399,-2.104,2.801,3.464,-1.779])
-# main(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76])
-# main(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829])
-main(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339])
+if __name__ == '__main__':
+    vals = []
+    vals.append(main_loop(t_joint=[-.166,-.678,.399,-2.104,2.801,3.464,-1.779]))
+    vals.append(main_loop(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76]))
+    vals.append(main_loop(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829]))
+    vals.append(main_loop(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339]))
+    print(np.array2string(np.mean(vals, axis=0), separator=','))

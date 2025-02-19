@@ -52,9 +52,9 @@ class GantryControl:
         self.useConveyor = True
         self.cam2robot = np.eye(4) # Replace with the extrinsic calibration
 
-        self.cam2gantryHome_x = 0.7750 # [meters]
-        self.cam2gantryHome_y = 0.930  # [meters] # old previous 0.955
-        self.cam2gantryHome_z = -0.620 # [meters] # old previous 0.620 --> -0.675
+        self.cam2gantryHome_x = 0.775 # [meters] # old previous 0.775 --> 0.740
+        self.cam2gantryHome_y = 0.940  # [meters] # old previous 0.955 --> 0.930
+        self.cam2gantryHome_z = -0.675 # [meters] # old previous 0.620 --> -0.675
         '''
         For self.cam2gantryHome_z:
         (Measure top of conveyor to suction cup z home: ~0.140 [meters])
