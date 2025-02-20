@@ -1,6 +1,7 @@
 # Request
 std_msgs/Float64MultiArray bbs # Flattened bounding boxes
 sensor_msgs/Image depth_image # Depth Map in the camera frame
+sensor_msgs/Image rgb_image # Depth Map in the camera frame
 ---
 # Response
 std_msgs/Float64MultiArray grasps # Flattened grasps. each grasp has x y z label

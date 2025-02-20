@@ -166,8 +166,15 @@ def main_loop(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678
 
 if __name__ == '__main__':
     vals = []
-    vals.append(main_loop(t_joint=[-.166,-.678,.399,-2.104,2.801,3.464,-1.779]))
-    vals.append(main_loop(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76]))
-    vals.append(main_loop(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829]))
-    vals.append(main_loop(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339]))
+    # vals.append(main_loop(t_joint=[-.166,-.678,.399,-2.104,2.801,3.464,-1.779]))
+    # vals.append(main_loop(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76]))
+    # vals.append(main_loop(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829]))
+    # vals.append(main_loop(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339]))
+    vals.append(main_loop(t_joint=[-1.38,1.157,2.068,-2.635,-2.541,1.825,2.479]))
+    vals.append(main_loop(t_joint=[-1.919,1.445,1.999,-2.67,-2.607,2.342,2.219]))
+    vals.append(main_loop(t_joint=[-1.376,1.366,1.773,-2.055,-2.75,2.426,2.199]))
+    vals.append(main_loop(t_joint=[1.684,.402,-1.764,-1.792,2.619,2.952,-1.466]))
+    vals.append(main_loop(t_joint=[1.614,.623,-1.593,-1.6,2.806,3.148,-1.389]))
+    vals.append(main_loop(t_joint=[2.346,.807,-2.146,-2.091,2.791,3.163,-1.374]))
+    vals.append(main_loop(t_joint=[2.508,.71,-2.45,-2.257,2.597,3.002,-1.406]))
     print(np.array2string(np.mean(vals, axis=0), separator=','))

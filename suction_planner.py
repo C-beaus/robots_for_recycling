@@ -43,7 +43,7 @@ class SuctionPlanner:
         if not self.fast_suction:
             suction_poses = self.succ_gen.generate_suction(self.depth_map, self.boxes, self.z_component_threshold) # [[x, y, z, label], .....]
         else:
-            suction_poses = self.succ_faster.generate_suction(self.depth_map, self.boxes, self.z_component_threshold)
+            suction_poses = self.succ_faster.generate_suction(self.depth_map, self.boxes, self.z_component_threshold, self.rgb_image)
         
         if suction_poses is None:
             return np.array([], dtype=np.float64)
@@ -58,6 +58,7 @@ class SuctionPlanner:
         self.boxes = bboxes.reshape(-1, 5)
         # self.depth_map = req.depth_image
         self.depth_map = np.copy(self.bridge.imgmsg_to_cv2(req.depth_image, desired_encoding="passthrough"))
+        self.rgb_image = np.copy(self.bridge.imgmsg_to_cv2(req.rgb_image, desired_encoding="passthrough"))
 
         rospy.loginfo(f'Received bounding boxes {self.boxes}')
 

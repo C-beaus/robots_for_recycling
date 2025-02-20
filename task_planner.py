@@ -156,7 +156,7 @@ class TaskPlanner:
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call to gantry control service failed: {e}")
 
-    def call_suction_grasp_service(self, depth_image, bboxes):
+    def call_suction_grasp_service(self, depth_image, bboxes, rgb_image):
 
         # Wait for the service to become available
         rospy.wait_for_service('get_sucked')
@@ -166,6 +166,7 @@ class TaskPlanner:
             request = SuctionSrvRequest()
             request.bbs.data = bboxes
             request.depth_image = depth_image
+            request.rgb_image = rgb_image
 
             # Call the service
             rospy.loginfo("Calling the suction grasp generation service to generate grasps within given bounding boxes...")
@@ -352,7 +353,7 @@ class TaskPlanner:
         depth_frame /= depth_frame.max()
         depth_frame_8 = np.uint8(255*depth_frame)
         colored_depth_frame = cv2.applyColorMap(depth_frame_8, cv2.COLORMAP_JET)
-        cv2.imshow('Depth Image', colored_depth_frame)
+        # cv2.imshow('Depth Image', colored_depth_frame)
 
         # Press 'q' to exit
         if cv2.waitKey() & 0xFF == ord('q'):
@@ -479,7 +480,7 @@ class TaskPlanner:
                     return
 
                 print("here")
-                suction_grasps = self.call_suction_grasp_service(depth_image, bboxes) # This is a flat array. needs to be reshaped like
+                suction_grasps = self.call_suction_grasp_service(depth_image, bboxes, rgb_image) # This is a flat array. needs to be reshaped like
                                             # grasps.reshape(-1, 4) where each  row would then become [x, y, z, label]
 
                 print("suction grasps collected")
