@@ -53,7 +53,7 @@ class GantryControl:
         self.cam2robot = np.eye(4) # Replace with the extrinsic calibration
 
         self.cam2gantryHome_x = 0.79 # [meters] # old previous 0.775 --> 0.740
-        self.cam2gantryHome_y = 0.950  # [meters] # old previous 0.955 --> 0.930
+        self.cam2gantryHome_y = 0.960  # [meters] # old previous 0.955 --> 0.930
         self.cam2gantryHome_z = -0.64 # [meters] # old previous 0.620 --> -0.675
         '''
         For self.cam2gantryHome_z:

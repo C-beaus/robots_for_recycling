@@ -303,7 +303,7 @@ class TaskPlanner:
             box_points = np.int32(box_points)  # Convert to integer points
             cv2.putText(rgb_frame, f'{ind}', (int(5+bbox[1]-half_w), int(12+bbox[2]-half_h)), font, .3, (255, 0, 0), 1, cv2.LINE_AA)
 
-            # Draw the rectangle on the image
+            # Draw the bounding box rectangle on the image
             cv2.polylines(rgb_frame, [box_points], isClosed=True, color=255, thickness=2)
 
         ppx=321.1669921875
@@ -315,9 +315,12 @@ class TaskPlanner:
             center_z = grasp[2]
             center_x = (grasp[0]/center_z) * fx + ppx
             center_y = (grasp[1]/center_z) * fy + ppy
-            print(f"GRASP wrt camera [pixels/pixels/meters]: x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
-            print(f"GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
+            print(f"TP: GRASP wrt camera [pixels/pixels/meters]: x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
+            print(f"TP: GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
 
+            # enter = np.array([center_x, center_y, center_z, [0, 0, 0, 1]])
+            # grasp_wrt_panda_base_frame = self.tf_cam_to_panda(center)
+            # print(f"TP: GRASP wrt panda base frame [meters]: {grasp_wrt_panda_base_frame[0]:0.4f}, y: {grasp_wrt_panda_base_frame[1]:0.4f}, z: {grasp_wrt_panda_base_frame[2]:0.4f}")
 
             
             cv2.putText(rgb_frame, f'[{ind}] x: {center_x:0.0f}, y: {center_y:0.0f}, z: {center_z:0.3f}', (20, 20*(ind+1)), font, .3, (0, 0, 255), 1, cv2.LINE_AA)
@@ -412,16 +415,54 @@ class TaskPlanner:
                 grasps_reshaped[:,2] = np.minimum(grasps_reshaped[:,2], .831)
                 self.show_grasps(rgb_image, depth_image, bboxes, grasps_reshaped)
 
-                # If this is the first time and there are no objects, add them all
-                if len(self.objects_we_tried) == 0:
-                    self.objects_in_frame = grasps_reshaped.tolist()
+            ##### Start Block: For Camera Eye-on-Hand Setup Demo. To run cycle once.
+                # # If this is the first time and there are no objects, add them all
+                # if len(self.objects_we_tried) == 0:
+                #     self.objects_in_frame = grasps_reshaped.tolist()
 
-                # Otherwise compare tolerance between x and y points of grasp to current values in list
-                else:
-                    tolerance = 0.01 #0.03
-                    for grasp in grasps_reshaped:
-                        if all(abs(x[0] - grasp[0]) > tolerance and abs(x[1] - grasp[1]) > tolerance for x in self.objects_we_tried):
-                            self.objects_in_frame.append(grasp.tolist())
+                # # Otherwise compare tolerance between x and y points of grasp to current values in list
+                # else:
+                #     tolerance = 0.01 #0.03
+                #     for grasp in grasps_reshaped:
+                #         if all(abs(x[0] - grasp[0]) > tolerance and abs(x[1] - grasp[1]) > tolerance for x in self.objects_we_tried):
+                #             self.objects_in_frame.append(grasp.tolist())
+            ##### End of Block: Camera Eye-on-Hand Setup Demo. To run cycle once.
+
+            ##### Start Block: NEW for Camera Eye-in-Hand Demo. To allow more cycles, rather than one.
+                # new_grasps = []
+                # tolerance = 0.005 #0.01
+                # for grasp in grasps_reshaped:
+                #     if all(abs(x[0] - grasp[0]) > tolerance and abs(x[1] - grasp[1]) > tolerance for x in self.objects_we_tried):
+                #         new_grasps.append(grasp.tolist())
+                # rospy.loginfo(f"{len(new_grasps)} novel grasps found out of {len(grasps_reshaped)} total grasps in this frame.")
+                # if not new_grasps:
+                #     rospy.loginfo("No more novel grasps found.")
+                #     break
+                # self.objects_in_frame = new_grasps
+
+                tolerance_xy = 0.005   # previously 0.01 — more forgiving
+                tolerance_theta = 0.3  # allow ~17 degrees difference
+
+                new_grasps = []
+                for grasp in grasps_reshaped:
+                    is_novel = all(
+                        abs(x[0] - grasp[0]) > tolerance_xy or
+                        abs(x[1] - grasp[1]) > tolerance_xy or
+                        abs(x[3] - grasp[3]) > tolerance_theta
+                        for x in self.objects_we_tried
+                    )
+                    if is_novel:
+                        new_grasps.append(grasp.tolist())
+                    else:
+                        rospy.loginfo(f"Rejected similar grasp (duplicate): {grasp}")
+
+                rospy.loginfo(f"{len(new_grasps)} novel grasps found out of {len(grasps_reshaped)} total grasps in this frame.")
+                self.objects_in_frame = new_grasps
+
+
+            ##### End of Block: End of Camera Eye-in-Hand Demo
+
+
 
 
                 if len(self.objects_in_frame) == 0:
@@ -449,7 +490,7 @@ class TaskPlanner:
             self.objects_we_tried = []
             self.objects_in_frame = []
             print("No more grasps able to be handled by the franka arm")
-            self.run_cartesian()
+            # self.run_cartesian()
         except Exception as e:
             rospy.logerr(f"Error running run_franka callback: {e}")
         finally:

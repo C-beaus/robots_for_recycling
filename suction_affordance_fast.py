@@ -141,8 +141,8 @@ class SuctionGeneratorFast:
         depth = depth.astype(np.float32)
         # # Filter depth map to remove belt points
         normal_depth = cv2.normalize(depth, 0, 255)  #debug
-        # cv2.imshow('SAF Window',normal_depth)
-        # cv2.waitKey(0)
+        cv2.imshow('SAF Window',normal_depth)
+        cv2.waitKey(0)
         print(depth.shape)
 
         points = []
@@ -161,17 +161,17 @@ class SuctionGeneratorFast:
             bb_top_left_col = int(x_center - width/2)
             bb_bottom_right_col = int(x_center + width/2)
 
-            # cv2.rectangle(normal_depth, (bb_top_left_col, bb_top_left_row), (bb_bottom_right_col, bb_bottom_right_row), (0, 255, 0), 2) #debug
-            # cv2.imshow('SAF Window 1', normal_depth)
-            # cv2.waitKey(0)
+            cv2.rectangle(normal_depth, (bb_top_left_col, bb_top_left_row), (bb_bottom_right_col, bb_bottom_right_row), (0, 255, 0), 2) #debug
+            cv2.imshow('SAF Window 1', normal_depth)
+            cv2.waitKey(0)
 
             depth_crop = depth[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col]
             padded_crop[bb_top_left_row : bb_bottom_right_row, bb_top_left_col : bb_bottom_right_col] = depth_crop
             padded_crop = self.remove_belt_points(padded_crop)
 
-            # cv2.imshow('SAF Window 2', depth_crop) #debug
-            # cv2.waitKey(0)
-            # print(depth_crop)
+            cv2.imshow('SAF Window 2', depth_crop) #debug
+            cv2.waitKey(0)
+            print(depth_crop)
 
             # # # calculate principal point with respect to crop
             # crop_cx = 321.1669921875 - bb_top_left_col
@@ -188,7 +188,7 @@ class SuctionGeneratorFast:
                                 stride=1  # Use every pixel (adjust for downsampling)
                             )
             
-            # o3d.visualization.draw_geometries([bbox_pcd]) #debug
+            o3d.visualization.draw_geometries([bbox_pcd]) #debug
             
             bbox_pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(
                                         radius=0.1,
@@ -199,19 +199,19 @@ class SuctionGeneratorFast:
             flat_indices = np.where(np.abs(normals[:, 2]) >= z_component_threshold)[0]
             
             flat_pcd = bbox_pcd.select_by_index(flat_indices)
-            # o3d.visualization.draw_geometries([flat_pcd]) #debug
+            o3d.visualization.draw_geometries([flat_pcd]) #debug
 
             triangle_vertices = np.array([[2.5, 4], [2.5, -4], [-4, 0]])/100
             suction_radius = 1.25/100  # in meters
 
             occupancy_grid, min_x, min_y = self.generate_occupancy_grid(np.asarray(flat_pcd.points))
-            # self.plot_grid(occupancy_grid) #debug
+            self.plot_grid(occupancy_grid) #debug
             occupancy_grid = cv2.dilate(occupancy_grid, np.ones((5, 5), np.uint8), iterations=1)
-            # self.plot_grid(occupancy_grid) #debug
+            self.plot_grid(occupancy_grid) #debug
             occupancy_grid = cv2.erode(occupancy_grid, np.ones((3, 3), np.uint8), iterations=1) #debug
-            # self.plot_grid(occupancy_grid) #debug
+            self.plot_grid(occupancy_grid) #debug
             kernel = self.create_suction_kernel(triangle_vertices, suction_radius, save=False)
-            # self.plot_grid(kernel) #debug
+            self.plot_grid(kernel) #debug
 
             # Choose a valid point closest to bbox center
             suction_possible = self.choose_approach_point(occupancy_grid, kernel, min_x, min_y)
@@ -247,6 +247,6 @@ class SuctionGeneratorFast:
 
             temp_pcd.colors = o3d.utility.Vector3dVector([[1, 0, 0]])
 
-            # o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
+            o3d.visualization.draw_geometries([flat_pcd, temp_pcd, mesh_sphere])
     
         return np.array(points)
