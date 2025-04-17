@@ -12,59 +12,8 @@ from franka.panda_hw.src.panda_control_595 import PandaControl as PandaControlNo
 Script: ArUco Marker Pose Estimation and Camera-to-Robot Extrinsics Calibration
 ====================================================================================
 
-Authors:
-    Muhammond Sultan    - Spring 2025
-    Galen Brown,        - Spring 2025
-    Alex Brattstrom     - Spring 2025
-
-Purpose:
-    This script estimates the pose of a 4x4 50mm ArUco marker (ID 0) attached to the 
-    end-effector of a Franka Emika Panda robot and computes the extrinsic transformation 
-    between the Intel RealSense D435i RGB camera and the robot base.
-
-Configuration:
-    - Eye-on-hand configuration: The RealSense D435i camera is mounted rigidly to the 
-      robot wrist (end effector), facing down toward the workspace.
-    - The ArUco marker is fixed to the end-effector itself, used to reverse-calculate 
-      the camera's position with respect to the robot's base frame.
-    - The robot is moved through a series of joint configurations covering various poses 
-      in its workspace.
-
-Pipeline Overview:
-    1. Move the Franka robot to a defined joint pose using `PandaControl` interface.
-    2. Capture an RGB image using the RealSense D435i (depth alignment optional).
-    3. Detect the ArUco marker in the image using OpenCV's `aruco` module.
-    4. Estimate the marker pose (rvec, tvec) using custom `solvePnP` logic.
-    5. Build transformation matrices for:
-        - Marker-to-camera
-        - Marker-to-end-effector (fixed transform, `T_marker_ee`)
-        - End-effector-to-base (from forward kinematics)
-    6. Compute the extrinsic camera-to-base transformation matrix (`T_camera_base`) 
-       using chaining and matrix inversion.
-    7. Repeat for multiple poses to average calibration estimates.
-
-Key Outputs:
-    - The `T_camera_base` matrix printed in each iteration represents the extrinsic 
-      calibration of the RGB camera in the robot's coordinate system.
-    - The final print statement averages multiple transformation matrices to improve 
-      accuracy and repeatability.
-
-Usage:
-    Run the script as the main file to loop through multiple joint poses and compute 
-    extrinsics from different viewpoints. This is useful for calibrating the camera 
-    pose relative to the robot for downstream grasping, sorting, or vision-based tasks.
-
-Dependencies:
-    - OpenCV with ArUco support (`cv2.aruco`)
-    - Intel RealSense SDK (`pyrealsense2`)
-    - PandaControl node (`panda_control_595.py`)
-    - SciPy, NumPy, and Matplotlib
-    - ROS-based services for Franka control (via `panda_control` ROS node)
-
-Notes:
-    - Marker detection and solvePnP can fail if the marker is out of frame or occluded.
-    - The transformation `T_marker_ee` may require adjustment based on actual mounting.
-    - Ensure ROS is running and PandaControl node is ready before running this script.
+for eye-in-hand. work in progress.
+TODO: new t_marker_ee and logic (since aruco markers are on conveyor, not ee)
 
 """
 
@@ -174,6 +123,11 @@ def main_loop(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678
     # T_marker_ee = np.array([[-.707, .707, 0, x_offset],[0, 0, -1, 0],[.707, .707, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
     T_marker_ee = np.array([[0, 0, 1, x_offset],[1, 0, 0, y_offset],[0, 1, 0, z_offset],[0, 0, 0, 1]]) # TODO need to figure out the correct transformation
     # T_marker_ee = np.array([[0, 1, 0, x_offset],[1, 0, 0, y_offset],[0, 0, -1, z_offset],[0, 0, 0, 1]]) #Marker on stick config
+
+    # T_marker_ee = np.array([[ 0, -1,  0, 0.501],
+    #           [-1,  0,  0, 0.012+0.070],
+    #           [ 0,  0, -1, 0.733-0.100],
+    #           [ 0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
     
     translation = np.array([positon.x, positon.y, positon.z])
 
@@ -233,13 +187,16 @@ if __name__ == '__main__':
     # vals.append(main_loop(t_joint=[-.34,-.518,.524,-2.001,2.789,3.377,-1.76]))
     # vals.append(main_loop(t_joint=[-.088,-.499,.218,-2.042,2.712,3.355,-1.829]))
     # vals.append(main_loop(t_joint=[1.608,-1.43,-1.315,-2.639,-2.836,2.019,2.339]))
-    for pattern in [[-1.38,1.157,2.068,-2.635,-2.541,1.825,2.479],
-                    [-1.919,1.445,1.999,-2.67,-2.607,2.342,2.219],
-                    [-1.376,1.366,1.773,-2.055,-2.75,2.426,2.199],
-                    [1.684,.402,-1.764,-1.792,2.619,2.952,-1.466],
-                    [1.614,.623,-1.593,-1.6,2.806,3.148,-1.389],
-                    [2.346,.807,-2.146,-2.091,2.791,3.163,-1.374],
-                    [2.508,.71,-2.45,-2.257,2.597,3.002,-1.406]]:
+    # for pattern in [[-1.38,1.157,2.068,-2.635,-2.541,1.825,2.479],
+    #                 [-1.919,1.445,1.999,-2.67,-2.607,2.342,2.219],
+    #                 [-1.376,1.366,1.773,-2.055,-2.75,2.426,2.199],
+    #                 [1.684,.402,-1.764,-1.792,2.619,2.952,-1.466],
+    #                 [1.614,.623,-1.593,-1.6,2.806,3.148,-1.389],
+    #                 [2.346,.807,-2.146,-2.091,2.791,3.163,-1.374],
+    #                 [2.508,.71,-2.45,-2.257,2.597,3.002,-1.406]]:
+    for pattern in [[0.284,-0.103,-0.266,-1.318,-0.043,1.255,0.788],
+                    [0.420,0.430,0.517,-0.988,-0.167,1.362,1.603],
+                    [-0.538,0.487,-0.270,-0.899,0.093,1.352,-0.021]]:
         ret = main_loop(t_joint=pattern)
         if(ret is not None):
             vals.append(ret)

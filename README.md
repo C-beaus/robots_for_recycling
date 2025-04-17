@@ -62,3 +62,20 @@ Note: check the port (Port /dev/ttyACM2 corresponds to Pneumatic Actuator Ardiun
 The project will run continuously until the user performs a manual kill command by typing control C (^C) in the terminal where these launch files were executed.
 
 ADD task_planner.py
+
+## Camera to Robot Transformation Calibration
+
+Use panda_calibrate.py instead of panda_calibration.py.
+
+Steps to run panda_calibrate.py:
+
+Step 1: Comment out last three BASH_POST_RC in main_launch.sh
+Step 2: To run panda_calibrate.py:
+'''
+~/RoboticRecycling2023/RBE595/src/robots_for_recycling$ source ~/panda_recycling/devel/setup.bash; python3 panda_calibrate.py -c True
+'''
+
+Purpose of panda_calibrate.py: Eye-on-hand config.
+Purpose of panda_calibrate_2.py: ...
+Purpose of detect_aruco_calibrate.py: Eye-in-hand config.
+Purpose of detect_aruco_calibrate_2.py: Added: flag for live image and step through process.

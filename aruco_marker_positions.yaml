@@ -1,0 +1,4 @@
+Aruco_Marker_ID:
+  0: [0.51, 0.28, 0.73]   # Marker ID → [x, y, z] in robot space
+  1: [0.52, -0.20, 0.73]
+  2: [0.49, 0.00, 0.73]
