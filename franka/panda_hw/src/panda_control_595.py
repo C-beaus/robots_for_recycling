@@ -36,18 +36,20 @@ class PandaControl():
         #                 anonymous=True)
         self.robot = moveit_commander.RobotCommander()
         self.scene = moveit_commander.PlanningSceneInterface()
-        self.moveGroup = moveit_commander.MoveGroupCommander("panda_arm")
+        # self.moveGroup = moveit_commander.MoveGroupCommander("panda_arm")
+        self.moveGroup = moveit_commander.MoveGroupCommander("panda_manipulator") # 2025-04-17
         self.moveGroup.allow_replanning(True)
         self.moveGroup.set_planning_time(30.0)
         self.moveGroup.set_num_planning_attempts(20)
-        self.gripper = moveit_commander.MoveGroupCommander("panda_hand") 
+        self.gripper = moveit_commander.MoveGroupCommander("panda_hand")
+        # self.gripper = moveit_commander.MoveGroupCommander("panda_manipulator") # 2025-04-17
         self.gripper.set_planning_time(10.0)
         
         self.scene.remove_world_object()
         self.add_coveyor()
         self.add_vbar()
-        self.add_hbar()
-        self.add_camera()
+        # self.add_hbar() # 2025-04-17 (camera above removed for UH-200F and hbar rotated out of the way)
+        # self.add_camera() # 2025-04-17 (camera above removed for UH-200F and hbar rotated out of the way)
         self.add_back_wall()
         self.add_side_wall1()
         self.add_side_wall2()
@@ -92,7 +94,8 @@ class PandaControl():
 
     def get_pose(self):
         # Get current robot pose (Position + Orientation)
-        return self.moveGroup.get_current_pose("panda_hand")
+        # return self.moveGroup.get_current_pose("panda_hand")
+        return self.moveGroup.get_current_pose("panda_link8")
     
 
     def get_joint(self):
@@ -290,7 +293,7 @@ class PandaControl():
 def default_test():
     pandaController = PandaControl()
 
-    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coordinates are given wrt to camera    (End effector is not considered as a connected part) # TODO: What is the purpose of these coordinates? In what units?
+    loaded = np.array([0.0744, -0.0944, 0.8221])  # Coordinates are given wrt to camera    (End effector is not considered as a connected part) # TODO: What is the purpose of these coordinates? In what units? --> meters
     start = pandaController.tf_cam_to_panda(loaded)[:-1]   # Convert coordinates to Panda Frame
     
     print("Moving to Start location")

@@ -317,6 +317,7 @@ class TaskPlanner:
             center_y = (grasp[1]/center_z) * fy + ppy
             print(f"TP: GRASP wrt camera [pixels/pixels/meters]: x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
             print(f"TP: GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
+            print(f"Grasp info: {grasp}")
 
             # enter = np.array([center_x, center_y, center_z, [0, 0, 0, 1]])
             # grasp_wrt_panda_base_frame = self.tf_cam_to_panda(center)

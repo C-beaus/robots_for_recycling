@@ -2,8 +2,11 @@
 
 import cv2
 import numpy as np
+import os
+from datetime import datetime
 from scipy.spatial.transform import Rotation as R
 import pyrealsense2 as rs
+from pathlib import Path
 from franka.panda_hw.src.panda_control_595 import PandaControl as PandaControlNode
 
 # Define known camera intrinsics for D435i
@@ -18,26 +21,21 @@ dist_coeffs = np.zeros((4, 1), dtype=np.float32)
 
 marker_size = 0.05  # 50 mm
 
-# Approx. Transformation of camera (Intel RealSense D435i) XYZ [meters] w.r.t Base Frame XYZ [meters] of Franka Emika Panda.
-# T_cam_to_base = np.array([
-#     [ 0, 1,  0, 0.501],
-#     [-1,  0,  0, 0.012+0.070],
-#     [ 0,  0, -1, 0.733-0.100],
-#     [ 0,  0,  0, 1.000]
-# ]) # used with previous home: [-0.731, -0.432, 0.579, -1.884, 0.213, 1.518, 0.602] in panda_control_595.py, def set_def_pos(self).
+# save_dir = Path("/mnt/data/aruco_detections_2025-04-18_05-26-32")
+# save_dir.mkdir(parents=True, exist_ok=True)
 
-pandaManipulator_x = 0.475 # [meters]
-pandaManipulator_y = -0.008
-pandaManipulator_z = 0.762
-cam_wrt_pandaManipulator_x = 0.060
-cam_wrt_pandaManipulator_y = 0
-cam_wrt_pandaManipulator_z = -0.090
-# T_cam_to_base = np.array([
-#     [ 0, -1,  0, 0.535],
-#     [-1,  0,  0, -0.008],
-#     [ 0,  0, -1, 0.852],
-#     [ 0,  0,  0, 1.000]
-# ]) # used with newer home: [0.284, -0.103, -0.266, -1.318, -0.043, 1.255, 0.788] inpanda_control_595.py, def set_def_pos(self).
+def draw_markers_with_axes(image, corners, ids):
+    image_with_markers = cv2.aruco.drawDetectedMarkers(image.copy(), corners, ids)
+    for i in range(len(ids)):
+        marker_points = np.array([
+            [-marker_size/2, marker_size/2, 0],
+            [ marker_size/2, marker_size/2, 0],
+            [ marker_size/2,-marker_size/2, 0],
+            [-marker_size/2,-marker_size/2, 0]
+        ], dtype=np.float32)
+        _, rvec, tvec = cv2.solvePnP(marker_points, corners[i][0], camera_matrix, dist_coeffs)
+        cv2.drawFrameAxes(image_with_markers, camera_matrix, dist_coeffs, rvec, tvec, 0.1)
+    return image_with_markers
 
 def capture_color_image():
     pipeline = rs.pipeline()
@@ -45,20 +43,11 @@ def capture_color_image():
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     pipeline.start(config)
     try:
-        # frames = pipeline.wait_for_frames()
-        # color_frame = frames.get_color_frame()
-        # color_image = np.asanyarray(color_frame.get_data())
-        # return color_image
         while True:
             frames = pipeline.wait_for_frames()
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
-            # return color_image
-        
-            cv2.imshow('Color Image', color_image)
-
-            # print("panda_calibrate: waiting for 'q'")
-
+            cv2.imshow('Live Camera Feed', color_image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     finally:
@@ -81,7 +70,6 @@ def estimate_pose(corners):
         [ marker_size/2,-marker_size/2, 0],
         [-marker_size/2,-marker_size/2, 0]
     ], dtype=np.float32)
-    
     for c in corners:
         _, rvec, tvec = cv2.solvePnP(marker_points, c, camera_matrix, dist_coeffs)
         rvecs.append(rvec)
@@ -97,12 +85,9 @@ def pose_to_matrix(rvec, tvec):
 
 def main():
     robot = PandaControlNode()
-
-    # Define joint positions. Arbitatry from RViz Joints tab for extending the camera's view
     home_joint = [0.284, -0.103, -0.266, -1.318, -0.043, 1.255, 0.788]
     left_joint = [0.420, 0.430, 0.517, -0.988, -0.167, 1.362, 1.603]
     right_joint = [-0.538, 0.487, -0.270, -0.899, 0.093, 1.352, -0.021]
-
     scan_poses = [("home", home_joint), ("left", left_joint), ("right", right_joint)]
 
     detected_markers = {}
@@ -110,60 +95,47 @@ def main():
     for label, joint in scan_poses:
         print(f"\n[INFO] Moving to {label} position...")
         robot.move_joint(joint)
-        # rospy.sleep(2.0)
 
         image = capture_color_image()
         corners, ids = detect_markers(image)
 
         if ids is not None:
+            vis_image = draw_markers_with_axes(image, corners, ids)
+
+            # timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            # save_path = save_dir / f"{label}_{timestamp}.png"
+
+            cv2.imshow("ArUco Markers with Axes", vis_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
             rvecs, tvecs = estimate_pose(corners)
             ee_pose = robot.get_pose().pose
+            T_ee_to_base = np.eye(4)
+            T_ee_to_base[:3, :3] = R.from_quat([
+                ee_pose.orientation.x,
+                ee_pose.orientation.y,
+                ee_pose.orientation.z,
+                ee_pose.orientation.w
+            ]).as_matrix()
+            T_ee_to_base[:3, 3] = [ee_pose.position.x, ee_pose.position.y, ee_pose.position.z]
 
-            base_R = R.from_quat([ee_pose.orientation.x, ee_pose.orientation.y,
-                                  ee_pose.orientation.z, ee_pose.orientation.w]).as_matrix()
-            base_T = np.eye(4)
-            base_T[:3, :3] = base_R
-            base_T[:3, 3] = [ee_pose.position.x, ee_pose.position.y, ee_pose.position.z]
+            R_cam_to_ee = np.array([
+                [ 0, -1, 0],
+                [ 1,  0, 0],
+                [ 0,  0, 1]
+            ])
+            T_cam_to_ee = np.eye(4)
+            T_cam_to_ee[:3, :3] = R_cam_to_ee
+            T_cam_to_ee[:3, 3] = [0.060, 0.000, 0.000]  # EE to camera
+
+            T_cam_to_base = T_ee_to_base @ T_cam_to_ee
 
             for i, marker_id in enumerate(ids.flatten()):
                 T_camera_marker = pose_to_matrix(rvecs[i], tvecs[i])
                 marker_cam = np.linalg.inv(T_camera_marker)
-
-                # marker_base = T_cam_to_base @ marker_cam # 2025-04-17
-
-              # 2025-04-18
-                # Get dynamic EE-to-base transform
-                T_ee_to_base = np.eye(4)
-                ee_pose = robot.get_pose().pose
-                T_ee_to_base[:3, :3] = R.from_quat([
-                    ee_pose.orientation.x,
-                    ee_pose.orientation.y,
-                    ee_pose.orientation.z,
-                    ee_pose.orientation.w
-                ]).as_matrix()
-                T_ee_to_base[:3, 3] = [ee_pose.position.x, ee_pose.position.y, ee_pose.position.z]
-
-                # Fixed transform: camera w.r.t. end effector
-                # Camera rotated: x_cam = -y_ee, y_cam = x_ee, z_cam = z_ee
-                R_cam_to_ee = np.array([
-                    [ 0, -1, 0],
-                    [ 1,  0, 0],
-                    [ 0,  0, 1]
-                ])
-                T_cam_to_ee = np.eye(4)
-                T_cam_to_ee[:3, :3] = R_cam_to_ee
-                # T_cam_to_ee[:3, 3] = [0.060, 0.000, -0.090]  # translation from EE to camera
-                T_cam_to_ee[:3, 3] = [0.060, 0.000, 0.000]  # translation from EE to camera
-
-                # Compose full transform: camera to base
-                T_cam_to_base = T_ee_to_base @ T_cam_to_ee
-
-                # Transform marker to base frame
                 marker_base = T_cam_to_base @ marker_cam
-              # End 2025-04-18
-
                 detected_markers[marker_id] = marker_base[:3, 3]
-
                 print(f"[MARKER {marker_id}] Position in base frame: {marker_base[:3, 3]}")
         else:
             print(f"[INFO] No markers detected at {label} position.")
@@ -176,6 +148,4 @@ def main():
     robot.move_joint(home_joint)
 
 if __name__ == '__main__':
-    # import rospy
-    # rospy.init_node("detect_aruco_calibrate")
     main()

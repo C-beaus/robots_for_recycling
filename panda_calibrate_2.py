@@ -13,7 +13,27 @@ Script: ArUco Marker Pose Estimation and Camera-to-Robot Extrinsics Calibration
 ====================================================================================
 
 for eye-in-hand. work in progress.
+
+Date: 2025-04-17
 TODO: new t_marker_ee and logic (since aruco markers are on conveyor, not ee)
+TODO: One of the main known reasons for the positions of the aruco markers to be off w.r.t base frame: 
+  1. Using panda_hand frame but referencing panda_manipulator frame with translation matrix with camera to ee!
+  2. Using too many hard-coded offsets throughout files and workspaces, instead of using a single YAML config file.
+TODO: Most of the logic and purpose of this code and logic came from panda_calibrate.py, which is a different configuration with ArUco markers; Such as not being on the gripper but on the conveyor; And the camera being eye-in-hand.
+NOTE: The only purpose of this file was to change the logic to support the different setup (eye-in-hand and markers on conveyor for labeling/marking sorting bins). The next purpose is to just printout the panda_hand values. 
+TODO: Another purpose is to figure out how to swap from panda_hand to panda_manipulator for pose and orientation values.
+
+
+
+Commands to run:
+  NOTE: Be sure to commend out all but the first BASH_POST_RC in main_launch.sh
+  Terminal #1:
+    cd ~/RoboticRecycling2023                                     # <--- is this cd necessary? No.
+    $ /home/merl/RoboticRecycling2023/RBE595/src/main_launch.sh
+  Terminal #2:
+    cd ~/RoboticRecycling2023/RBE595/src/robots_for_recycling
+    $ source ~/panda_recycling/devel/setup.bash; python3 panda_calibrate_2.py -c True
+
 
 """
 
@@ -108,7 +128,7 @@ def main_loop(T_ee_base=np.eye(4), T_marker_ee=np.eye(4), t_joint = [-.166,-.678
 
     robot_controller = PandaControlNode()
     robot_controller.move_joint(t_joint)
-    pose = robot_controller.get_pose().pose # Could also be a problem, check if this is actually to EE and not the last joint before EE
+    pose = robot_controller.get_pose().pose # This is Panda Arm frame, NOT Panda Manipulation frame!
     print(f'Current EE Pose: {pose}')
     positon = pose.position
     quat = pose.orientation
