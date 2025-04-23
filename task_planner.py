@@ -67,19 +67,19 @@ class TaskPlanner:
             get_rgbd_frames = rospy.ServiceProxy('camera_service', CameraSrv)
 
             # Call the service
-            rospy.loginfo("Calling the camera service to get RGB and depth frames...")
+            rospy.loginfo("TP: Calling the camera service to get RGB and depth frames...")
             response = get_rgbd_frames()
 
             # Check and handle the response
             if response:
-                rospy.loginfo("RGB and Depth pair received. Ready For Classification and Grasp Generation")
+                rospy.loginfo("TP: RGB and Depth pair received. Ready For Classification and Grasp Generation")
                 return response.rgb_image, response.depth_image, response.timestamp
             else:
-                rospy.logwarn("Capture of RGB and Depth frames was unsuccessful.")
+                rospy.logwarn("TP: Capture of RGB and Depth frames was unsuccessful.")
                 return None
 
         except rospy.ServiceException as e:
-            rospy.logerr(f"Service call to the camera service failed: {e}")
+            rospy.logerr(f"TP: Service call to the camera service failed: {e}")
 
     def call_grasp_inference_service(self, depth_image, rgb_image):
 
@@ -93,16 +93,16 @@ class TaskPlanner:
             request.depth_image = depth_image
 
             # Call the service
-            rospy.loginfo("Calling the antipodal model service to run inference on current frames...")
+            rospy.loginfo("TP: Calling the antipodal model service to run inference on current frames...")
             response = run_antipodal_network(request)
-            rospy.loginfo(f"response info: {response}")
+            rospy.loginfo(f"TP: response info: {response}")
 
             # Check and handle the response
             if response:
-                rospy.loginfo("Antipodal inference completed successfully. Ready to receive bounding boxes.")
+                rospy.loginfo("TP: Antipodal inference completed successfully. Ready to receive bounding boxes.")
                 return response.infer_success
             else:
-                rospy.logwarn("Antipodal inference did not succeed.")
+                rospy.logwarn("TP: Antipodal inference did not succeed.")
                 return None
 
         except rospy.ServiceException as e:
@@ -281,10 +281,10 @@ class TaskPlanner:
         thickness = 2         # Thickness of the circle's edge (use -1 for a filled circle)
         print(grasps, bboxes)
         # grasps = np.asarray(grasps)
-        rospy.loginfo("Getting img")
+        rospy.loginfo("TP: Getting img")
         rgb_frame = self.bridge.imgmsg_to_cv2(rgb_image, desired_encoding="rgb8")
         depth_frame = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding="64FC1")
-        rospy.loginfo("Got img")
+        rospy.loginfo("TP: Got img")
 
         for ind, bbox in enumerate(bboxes):
             center = (bbox[1], bbox[2])
@@ -317,7 +317,7 @@ class TaskPlanner:
             center_y = (grasp[1]/center_z) * fy + ppy
             print(f"TP: GRASP wrt camera [pixels/pixels/meters]: x: {center_x:0.4f}, y: {center_y:0.4f}, z: {center_z:0.4f}")
             print(f"TP: GRASP wrt camera [meters]: x: {grasp[0]:0.4f}, y: {grasp[1]:0.4f}, z: {grasp[2]:0.4f}")
-            print(f"Grasp info: {grasp}")
+            print(f"TP: Grasp info: {grasp}")
 
             # enter = np.array([center_x, center_y, center_z, [0, 0, 0, 1]])
             # grasp_wrt_panda_base_frame = self.tf_cam_to_panda(center)
@@ -325,14 +325,23 @@ class TaskPlanner:
 
             
             cv2.putText(rgb_frame, f'[{ind}] x: {center_x:0.0f}, y: {center_y:0.0f}, z: {center_z:0.3f}', (20, 20*(ind+1)), font, .3, (0, 0, 255), 1, cv2.LINE_AA)
+            
+            # # Ensure text position stays within image bounds
+            # img_h, img_w, _ = rgb_frame.shape
+            # text_x = min(max(center[0] + 10, 0), img_w - 1)
+            # text_y = min(max(center[1] - 10, 0), img_h - 1)
+
+            # cv2.putText(rgb_frame, f"{angle_degrees:.1f} deg", (text_x, text_y),
+            #             font, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
 
             center = (int(center_x),int(center_y))
-            print(f"center is: {center}, angle is: {grasp[3]*180/3.1415}")
+            print(f"TP: center is: {center}, angle is: {grasp[3]*180/3.1415}")
             # print(rgb_image)
             # cv2.circle(rgb_frame, center, radius, color, thickness)
             # cv2.ellipse(img=rgb_frame, center=center, axes=(int(800*grasp[4]), 10), angle=grasp[3]*180/3.1415, startAngle=0, endAngle=360, color=color, thickness=2)
 
             angle_degrees = grasp[3] * 180 / np.pi
+            print(f"TP: Grasp angle (deg): {grasp[3] * 180.0 / np.pi:.2f}")
             angle_degrees -= 45
             size = (5, 800*grasp[4])  # Size of the rectangle (width, height)
             # Create a rotated rectangle
@@ -342,7 +351,7 @@ class TaskPlanner:
             box_points = cv2.boxPoints(rotated_rect)
             box_points = np.int32(box_points)  # Convert to integer points
 
-            # Draw the rectangle on the image
+            # Draw the red rectangle on the image
             cv2.polylines(rgb_frame, [box_points], isClosed=True, color=(0,0,255), thickness=2)
 
             cv2.circle(rgb_frame, center, 2, color, 1)

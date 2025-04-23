@@ -64,25 +64,131 @@ class AntipodalPlanner:
 
 
 
+    # def generatePose(self):
+
+    #     metric_grasp_poses, grasp_params_for_viz = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
+    #                                             bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
+    #                                             fx=605.622314453125, fy=605.8401489257812)
+    #     metric_grasp_poses = np.array(metric_grasp_poses, dtype=np.float64)
+    #     flattened_grasp_poses = metric_grasp_poses.flatten()
+
+    #     rospy.loginfo(f'Grasp poses: {metric_grasp_poses}')
+
+    #     img_gray = cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY)
+    #     grasp_msg = Float64MultiArray()
+    #     img_msg = Float64MultiArray()
+    #     img_msg.data = img_gray.flatten()
+    #     grasp_msg.data = grasp_params_for_viz
+    #     self.grasp_pub_for_viz.publish(grasp_msg)
+    #     self.img_pub_for_viz.publish(img_msg)
+        
+    #     return flattened_grasp_poses
+
+
     def generatePose(self):
-
-        metric_grasp_poses, grasp_params_for_viz = self.generator.generate_poses(q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img, depth=self.depth_img, 
-                                                bboxes=self.boxes, camera2robot=self.cam2bot, ppx=321.1669921875, ppy=231.57203674316406, 
-                                                fx=605.622314453125, fy=605.8401489257812)
+        metric_grasp_poses, grasp_params_for_viz = self.generator.generate_poses(
+            q_img=self.q_img, ang_img=self.ang_img, width_img=self.width_img,
+            depth=self.depth_img, bboxes=self.boxes, camera2robot=self.cam2bot,
+            ppx=321.1669921875, ppy=231.57203674316406,
+            fx=605.622314453125, fy=605.8401489257812
+        )
         metric_grasp_poses = np.array(metric_grasp_poses, dtype=np.float64)
+
+        # Post-process grasp angles
+        # for i, grasp in enumerate(metric_grasp_poses):
+        #     rospy.loginfo(f"AP: [Grasp {i}] angle (radians): {grasp[3]:.3f}, angle (deg): {grasp[3] * 180.0 / np.pi:.1f}")
+
+        # # for i, grasp in enumerate(metric_grasp_poses):
+        #     bbox = self.boxes[i]  # [label, cx, cy, w, h]
+        #     cx, cy, w, h = map(int, bbox[1:])
+
+        #     x1, x2 = max(cx - w // 2, 0), min(cx + w // 2, self.color_img.shape[1])
+        #     y1, y2 = max(cy - h // 2, 0), min(cy + h // 2, self.color_img.shape[0])
+
+        #     # Extract pixel positions within bounding box where depth is valid
+        #     depth_crop = self.depth_img[y1:y2, x1:x2]
+        #     ys, xs = np.where(depth_crop > 0)
+
+        #     if len(xs) < 10:
+        #         continue  # skip poorly defined objects
+
+        #     # Convert to image-space coords
+        #     pts = np.stack([xs + x1, ys + y1], axis=1)
+        #     pts_centered = pts - np.mean(pts, axis=0)
+
+        #     # Principal component analysis (PCA) to get orientation
+        #     cov = np.cov(pts_centered, rowvar=False)
+        #     eigvals, eigvecs = np.linalg.eigh(cov)
+        #     principal_axis = eigvecs[:, 0] if eigvals[0] < eigvals[1] else eigvecs[:, 1]
+
+        #     # Grasp direction is orthogonal to long axis => short axis
+        #     angle = np.arctan2(principal_axis[1], principal_axis[0]) + np.pi / 2
+
+        #     # Normalize between [-pi, pi]
+        #     angle = (angle + np.pi) % (2 * np.pi) - np.pi
+
+        #     grasp[3] = angle  # Update angle only
+
+        for i, grasp in enumerate(metric_grasp_poses):
+            rospy.loginfo(f"AP: [Grasp {i}] angle (radians): {grasp[3]:.3f}, angle (deg): {grasp[3] * 180.0 / np.pi:.1f}")
+            bbox = self.boxes[i]
+            cx, cy, w, h = map(int, bbox[1:])
+
+            # Define image crop bounds
+            x1 = max(cx - w // 2, 0)
+            x2 = min(cx + w // 2, self.depth_img.shape[1])
+            y1 = max(cy - h // 2, 0)
+            y2 = min(cy + h // 2, self.depth_img.shape[0])
+
+            depth_crop = self.depth_img[y1:y2, x1:x2]
+            mask = depth_crop > 0
+            ys, xs = np.where(mask)
+            
+            if len(xs) < 10:
+                continue  # not enough data, skip
+
+            # Compute pixel coordinates in full image space
+            xs_full = xs + x1
+            ys_full = ys + y1
+            zs = depth_crop[ys, xs]
+
+            # Convert to 3D (camera coordinates)
+            X = (xs_full - 321.1669921875) * zs / 605.622314453125
+            Y = (ys_full - 231.57203674316406) * zs / 605.8401489257812
+            Z = zs
+
+            # Compute true centroid in camera space
+            x_avg = np.mean(X)
+            y_avg = np.mean(Y)
+            z_avg = np.mean(Z)
+
+            # Replace grasp position with centroid
+            grasp[0] = x_avg
+            grasp[1] = y_avg
+            grasp[2] = z_avg
+
+            rospy.loginfo(f"AP: [{i}] Grasp center updated to: ({x_avg:.3f}, {y_avg:.3f}, {z_avg:.3f})")
+
+
+
+        # For visualization
         flattened_grasp_poses = metric_grasp_poses.flatten()
-
-        rospy.loginfo(f'Grasp poses: {metric_grasp_poses}')
-
-        img_gray = cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY)
-        grasp_msg = Float64MultiArray()
-        img_msg = Float64MultiArray()
-        img_msg.data = img_gray.flatten()
-        grasp_msg.data = grasp_params_for_viz
+        # Overwrite grasp_params_for_viz with corrected values for drawing
+        viz_grasps = []
+        for g in metric_grasp_poses:
+            x = (g[0] / g[2]) * 605.622314453125 + 321.1669921875
+            y = (g[1] / g[2]) * 605.8401489257812 + 231.57203674316406
+            angle = g[3]
+            width = g[4]
+            viz_grasps.extend([x, y, angle, width])
+        grasp_msg = Float64MultiArray(data=viz_grasps)
+        # grasp_msg = Float64MultiArray(data=grasp_params_for_viz)
+        img_msg = Float64MultiArray(data=cv2.cvtColor(self.color_img, cv2.COLOR_BGR2GRAY).flatten())
         self.grasp_pub_for_viz.publish(grasp_msg)
         self.img_pub_for_viz.publish(img_msg)
-        
+
         return flattened_grasp_poses
+
 
     def select_bbs_grasps(self, req):
 
