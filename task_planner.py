@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from cv_bridge import CvBridge
 from time import sleep
+import sys
 
 
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -46,10 +47,112 @@ class TaskPlanner:
         self.objects_in_frame = []
         self.objects_we_tried = []
 
-        self.run_franka()
-        # self.run_cartesian()
+        # self.run_franka()
+        # # self.run_cartesian()
 
-        rospy.on_shutdown(self.shutdown)
+        # rospy.on_shutdown(self.shutdown)
+
+
+        # while not rospy.is_shutdown():
+        #     self.run_franka()
+
+        #     # <<< NEW CODE: move robot to home pose before asking for input
+        #     try:
+        #         rospy.wait_for_service('panda_control')
+        #         panda_control = rospy.ServiceProxy('panda_control', PandaSrv)
+        #         home_grasp = PandaSrvRequest()
+        #         home_grasp.grasps.data = [9999]
+        #         panda_control(home_grasp)
+        #         rospy.loginfo("Moved robot back to home position.")
+        #     except Exception as e:
+        #         rospy.logwarn(f"Failed to move robot to home position: {e}")
+
+        #     print("\n--- No more grasps handled. ---")
+        #     print("Press ENTER to try again, or type 'q' and ENTER to quit.")
+
+        #     user_input = input()
+        #     if user_input.lower() == 'q':
+        #         print("Exiting program.")
+        #         rospy.signal_shutdown("User requested shutdown.")
+        #         sys.exit(0)  # End the program
+        #     else:
+        #         # Reset lists and retry
+        #         self.objects_in_frame = []
+        #         self.objects_we_tried = []
+
+        # while not rospy.is_shutdown():
+        #     self.run_franka()
+
+        #     print("\n--- No more grasps handled. ---")
+        #     print("Press ENTER to try again, or type 'q' and ENTER to quit.")
+
+        #     user_input = input()
+        #     if user_input.lower() == 'q':
+        #         print("Exiting program.")
+        #         rospy.signal_shutdown("User requested shutdown.")
+        #         sys.exit(0)  # End the program
+        #     else:
+        #         # <<< NOW move robot to home, AFTER you press ENTER
+        #         try:
+        #             rospy.wait_for_service('panda_control')
+        #             panda_control = rospy.ServiceProxy('panda_control', PandaSrv)
+        #             home_grasp = PandaSrvRequest()
+        #             home_grasp.grasps.data = [9999]
+        #             panda_control(home_grasp)
+        #             rospy.loginfo("Moved robot back to home position.")
+        #         except Exception as e:
+        #             rospy.logwarn(f"Failed to move robot to home position: {e}")
+
+        #         # Reset lists and retry
+        #         self.objects_in_frame = []
+        #         self.objects_we_tried = []
+        
+        while not rospy.is_shutdown():
+            self.run_franka()
+
+            print("\n--- No more grasps handled. ---")
+            print("Press ENTER to try again, type 'r' to reset a bin, or 'q' to quit.")
+
+            user_input = input().lower()
+            if user_input == 'q':
+                print("Exiting program.")
+                rospy.signal_shutdown("User requested shutdown.")
+                sys.exit(0)
+            elif user_input == 'r':
+                try:
+                    rospy.wait_for_service('panda_control')
+                    panda_control = rospy.ServiceProxy('panda_control', PandaSrv)
+                    tray_id = input("Enter tray id to reset (0=Cardboard, 1=Plastic, 2=Metal): ")
+                    try:
+                        tray_id = int(tray_id)
+                    except ValueError:
+                        print("Invalid tray id. Must be 0, 1, or 2.")
+                        continue
+
+                    reset_bin_request = PandaSrvRequest()
+                    reset_bin_request.grasps.data = [10000 + tray_id]  # Example: 10000, 10001, 10002
+                    panda_control(reset_bin_request)
+                    print(f"Requested reset of tray {tray_id}.")
+                except Exception as e:
+                    rospy.logwarn(f"Failed to send reset_bin command: {e}")
+
+                # No need to reset lists yet — will retry after next franka run
+            else:
+                try:
+                    rospy.wait_for_service('panda_control')
+                    panda_control = rospy.ServiceProxy('panda_control', PandaSrv)
+                    home_grasp = PandaSrvRequest()
+                    home_grasp.grasps.data = [9999]
+                    panda_control(home_grasp)
+                    rospy.loginfo("Moved robot back to home position.")
+                except Exception as e:
+                    rospy.logwarn(f"Failed to move robot to home position: {e}")
+
+                self.objects_in_frame = []
+                self.objects_we_tried = []
+
+
+
 
         # self.pandaManipulator = PandaManipulator()
         # self.pandaEndEffector = self.pandaManipulator.end_effector

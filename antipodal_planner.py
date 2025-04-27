@@ -130,7 +130,8 @@ class AntipodalPlanner:
         #     grasp[3] = angle  # Update angle only
 
         for i, grasp in enumerate(metric_grasp_poses):
-            rospy.loginfo(f"AP: [Grasp {i}] angle (radians): {grasp[3]:.3f}, angle (deg): {grasp[3] * 180.0 / np.pi:.1f}")
+            rospy.loginfo(f"AP: [Grasp {i}] angle (rad): {grasp[3]:.3f}, (deg): {grasp[3] * 180.0 / np.pi:.1f}")
+            rospy.loginfo(f"AP: [Grasp {i}] width (m): {grasp[4]}")
             bbox = self.boxes[i]
             cx, cy, w, h = map(int, bbox[1:])
 
@@ -156,6 +157,53 @@ class AntipodalPlanner:
             X = (xs_full - 321.1669921875) * zs / 605.622314453125
             Y = (ys_full - 231.57203674316406) * zs / 605.8401489257812
             Z = zs
+
+
+            # Stack into (N, 2) array for PCA
+            pts = np.stack([X, Y], axis=1)
+            pts_centered = pts - np.mean(pts, axis=0)
+
+            # # Principal component analysis (PCA) to get orientation
+            # cov = np.cov(pts_centered, rowvar=False)
+            # eigvals, eigvecs = np.linalg.eigh(cov)
+            # principal_axis = eigvecs[:, 0] if eigvals[0] < eigvals[1] else eigvecs[:, 1]
+
+            # # Print eigenvalues
+            # length_long = np.sqrt(eigvals.max())
+            # length_short = np.sqrt(eigvals.min())
+            # rospy.loginfo(f"AP: [{i}] PCA eigenvalues sqrt: short={length_short:.4f}, long={length_long:.4f}")
+
+            # if grasp[4] < length_long:
+            #     rospy.logwarn(f"AP: [Grasp {i}] width {grasp[4]:.4f} < PCA long axis {length_long:.4f} — fixing width.")
+            #     grasp[4] = length_long
+
+            # # Grasp direction is orthogonal to long axis => short axis
+            # angle = np.arctan2(principal_axis[1], principal_axis[0]) + np.pi / 2
+
+            # # Normalize between [-pi, pi]
+            # angle = (angle + np.pi) % (2 * np.pi) - np.pi
+
+            # grasp[3] = angle  # Update grasp orientation
+            
+            # Do PCA
+            cov = np.cov(pts_centered, rowvar=False)
+            eigvals, eigvecs = np.linalg.eigh(cov)
+
+            # Identify principal axis (long axis)
+            principal_axis = eigvecs[:, np.argmax(eigvals)]  # largest eigenvalue = long side
+            minor_axis = eigvecs[:, np.argmin(eigvals)]      # smaller eigenvalue = short side
+
+            # Angle of the minor (short) axis
+            angle = np.arctan2(minor_axis[1], minor_axis[0])
+
+            # Normalize angle between [-pi, pi]
+            angle = (angle + np.pi) % (2*np.pi) - np.pi
+
+            # Save grasp angle
+            grasp[3] = angle
+
+            
+
 
             # Compute true centroid in camera space
             x_avg = np.mean(X)
